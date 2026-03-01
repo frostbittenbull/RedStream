@@ -62,4 +62,4 @@ python main.py
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp)
 - [ffmpeg](https://ffmpeg.org/)
 - [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter)
-- Pillow
+- [Pillow](https://github.com/python-pillow/Pillow)
