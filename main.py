@@ -198,11 +198,15 @@ def show_about(parent):
                      font=("Segoe UI", 12), height=20, anchor="w").grid(
                          row=i, column=0, sticky="w", padx=(0, 0), pady=0)
         if url:
-            lnk = ctk.CTkLabel(meta_frame, text=val, text_color=col,
-                                font=("Segoe UI", 12, "underline"), height=20,
-                                cursor="hand2", anchor="w")
-            lnk.grid(row=i, column=1, sticky="w", padx=(8, 0), pady=0)
-            lnk.bind("<Button-1>", lambda e, u=url: __import__("webbrowser").open(u))
+            import webbrowser
+            lnk = ctk.CTkButton(
+                meta_frame, text=val, text_color=col,
+                font=("Segoe UI", 12, "underline"),
+                fg_color="transparent", hover_color="#3a3a3a",
+                height=20, anchor="w", cursor="hand2",
+                command=lambda u=url: webbrowser.open(u),
+            )
+            lnk.grid(row=i, column=1, sticky="w", padx=(4, 0), pady=0)
         else:
             ctk.CTkLabel(meta_frame, text=val, text_color=col,
                          font=("Segoe UI", 12), height=20, anchor="w").grid(
