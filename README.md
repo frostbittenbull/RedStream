@@ -1,5 +1,5 @@
 # RedStream: Video Downloader
-![Preview](banner.png)
+![Preview](Preview.png)
 ## 📥 Простой и удобный загрузчик видео с популярных сайтов
 
 **RedStream** — десктопное приложение для Windows с минималистичным интерфейсом, позволяющее скачивать видео и аудио с YouTube, Instagram, TikTok и сотен других платформ. Построено на базе [yt-dlp](https://github.com/yt-dlp/yt-dlp), [ffmpeg](https://github.com/ffmpeg/ffmpeg), [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter) и [Pillow](https://github.com/python-pillow/Pillow).
@@ -45,7 +45,7 @@ python main.py
 ---
 
 ## 🖼️ Скриншот:
-![Preview](Preview.png)
+![Preview](Screenshot.png)
 
 ---
 
