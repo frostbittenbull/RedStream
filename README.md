@@ -30,7 +30,7 @@
 git clone https://github.com/frostbittenbull/RedStream.git
 cd RedStream
 curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe -o yt-dlp.exe
-curl -L https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip -o ffmpeg.zip
+curl -L https://github.com/BtbN/FFmpeg-Builds/releases/latest/download/ffmpeg-master-latest-win64-gpl.zip -o ffmpeg.zip
 tar -xf ffmpeg.zip
 for /d %i in (ffmpeg-*-git-*) do move /y "%i\bin\ffmpeg.exe" .
 for /d %i in (ffmpeg-*-git-*) do rmdir /s /q "%i"
