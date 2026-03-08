@@ -5,12 +5,29 @@ import threading
 import re
 import time
 import ctypes
+import winreg
+import tkinter.filedialog as filedialog
 
 import customtkinter as ctk
 from PIL import Image
+
 def resource_path(name):
     base = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
     return os.path.join(base, name)
+
+def get_downloads_folder():
+    try:
+        key = winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            r"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders",
+        )
+        value, _ = winreg.QueryValueEx(key, "{374DE290-123F-4565-9164-39C4925E467B}")
+        winreg.CloseKey(key)
+        if value and os.path.isdir(value):
+            return value
+    except Exception:
+        pass
+    return os.path.join(os.path.expanduser("~"), "Downloads")
 
 def force_taskbar(hwnd):
     try:
@@ -45,9 +62,9 @@ def show_splash_on_app(app, on_done):
     ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(iw, ih))
     ctk.CTkLabel(splash, image=ctk_img, text="").pack()
 
-    steps      = 30
-    step_ms    = int(3.0 * 0.3 / steps * 1000)
-    hold_ms    = int(3.0 * 0.4 * 1000)
+    steps   = 30
+    step_ms = int(3.0 * 0.3 / steps * 1000)
+    hold_ms = int(3.0 * 0.4 * 1000)
 
     def fade_in(i=0):
         try: splash.attributes("-alpha", i / steps)
@@ -186,9 +203,9 @@ def show_about(parent):
     GITHUB_URL = "https://github.com/frostbittenbull/RedStream"
     meta_rows = [
         ("Автор:",     "#frostbittenbull",   "#ffffff", None),
-        ("Сайт:",      "github.com",    "#4ea8de", GITHUB_URL),
-        ("Версия:",    "1.0",                "#aaaaaa", None),
-        ("Сборка:",    "01.03.2025",         "#aaaaaa", None),
+        ("Сайт:",      "github.com",         "#4ea8de", GITHUB_URL),
+        ("Версия:",    "1.1",                "#aaaaaa", None),
+        ("Сборка:",    "09.03.2025",         "#aaaaaa", None),
         ("Платформа:", "Windows 10/11",      "#aaaaaa", None),
     ]
     meta_frame = ctk.CTkFrame(popup, fg_color="transparent")
@@ -235,11 +252,10 @@ class RedStreamApp(ctk.CTk):
         super().__init__()
 
         self.withdraw()
-
         self.overrideredirect(True)
         self.configure(fg_color="#444444")
 
-        W, H = 450, 687
+        W, H = 450, 744
         sw, sh = self.winfo_screenwidth(), self.winfo_screenheight()
         self.geometry(f"{W}x{H}+{(sw - W) // 2}+{(sh - H) // 2}")
 
@@ -268,7 +284,10 @@ class RedStreamApp(ctk.CTk):
         self._timer_id = None
         self._log_file  = os.path.join(os.environ.get("TEMP", "/tmp"), "yt_progress.txt")
         self._done_file = os.path.join(os.environ.get("TEMP", "/tmp"), "yt_done.txt")
-        self._dest_folder = os.path.join(os.path.expanduser("~"), "Desktop", "RedStream Downloader")
+
+        downloads = get_downloads_folder()
+        self._dest_folder = os.path.join(downloads, "RedStream Downloader")
+
         self._downloading_video_stream = True
 
         self._build_ui()
@@ -380,7 +399,7 @@ class RedStreamApp(ctk.CTk):
         )
         self.browser_combo.pack(fill="x", pady=(6, 6))
         ctk.CTkLabel(sec2, text="Перед скачиванием браузер должен быть закрыт.",
-                     text_color="#bf0000", font=("Segoe UI", 10), anchor="w", height=14).pack(fill="x")
+                     text_color="#ff0000", font=("Segoe UI", 10), anchor="w", height=14).pack(fill="x")
         ctk.CTkLabel(sec2,
                      text="Если видео не имеет возрастные ограничения, выберите \"Без авторизации\".",
                      text_color="#00bf00", font=("Segoe UI", 10), anchor="w", height=14).pack(fill="x")
@@ -419,6 +438,35 @@ class RedStreamApp(ctk.CTk):
         self.res_combo = make_combo(sec4, values=list(self._res_map.keys()), default="FullHD (1080p)")
         self.res_combo.pack(fill="x")
 
+        sec_folder = self._section(p)
+        ctk.CTkLabel(sec_folder, text="Папка для сохранения:",
+                     text_color="#aaaaaa", font=("Segoe UI", 11), anchor="w", height=14).pack(fill="x")
+
+        folder_row = ctk.CTkFrame(sec_folder, fg_color="transparent")
+        folder_row.pack(fill="x", pady=(4, 0))
+        folder_row.columnconfigure(0, weight=1)
+
+        self.folder_entry = ctk.CTkEntry(
+            folder_row,
+            fg_color="#333333", border_color="#555555",
+            text_color="#cccccc", font=("Segoe UI", 11),
+            state="disabled",
+        )
+        self.folder_entry.grid(row=0, column=0, sticky="ew")
+
+        self.folder_entry.configure(state="normal")
+        self.folder_entry.insert(0, self._dest_folder)
+        self.folder_entry.configure(state="disabled")
+
+        browse_btn = ctk.CTkButton(
+            folder_row, text="📁", width=28, height=28,
+            fg_color="#555555", hover_color="#666666",
+            corner_radius=4, font=("Segoe UI", 13),
+            command=self._browse_folder,
+        )
+        browse_btn.grid(row=0, column=1, padx=(4, 0))
+        self._add_tooltip(browse_btn, "Выбрать папку\nдля сохранения")
+
         self.download_btn = ctk.CTkButton(
             p, text="СКАЧАТЬ", font=("Segoe UI", 14, "bold"),
             fg_color="#ff0000", hover_color="#bf0000",
@@ -429,11 +477,10 @@ class RedStreamApp(ctk.CTk):
 
         ctk.CTkLabel(
             p,
-            text='Файлы будут сохранены в папку "RedStream Downloader" на рабочем столе.\n'
-                 'Если программа не отвечает на 100%, идет финальная обработка файла.',
+            text="Если программа не отвечает на 100%, идет финальная обработка файла.",
             text_color="#808080", font=("Segoe UI", 10),
             justify="center", wraplength=410,
-        ).pack(pady=(8, 0), padx=20)
+        ).pack(pady=(0, 0), padx=20)
 
         self.progress_frame = ctk.CTkFrame(p, fg_color="transparent")
         self.progress_bar = ctk.CTkProgressBar(
@@ -513,6 +560,20 @@ class RedStreamApp(ctk.CTk):
         except Exception: pass
         inner.insert("insert", text)
         self.url_entry.focus_set()
+
+    def _browse_folder(self):
+        initial = self._dest_folder if os.path.isdir(self._dest_folder) else os.path.dirname(self._dest_folder)
+        chosen = filedialog.askdirectory(
+            title="Выберите папку для сохранения",
+            initialdir=initial,
+            parent=self,
+        )
+        if chosen:
+            self._dest_folder = chosen
+            self.folder_entry.configure(state="normal")
+            self.folder_entry.delete(0, "end")
+            self.folder_entry.insert(0, self._dest_folder)
+            self.folder_entry.configure(state="disabled")
 
     def _toggle_settings(self):
         fmt = self._format_map.get(self.format_combo.get(), "mp4")
@@ -720,7 +781,7 @@ class RedStreamApp(ctk.CTk):
             win.update_idletasks()
             ww, wh = win.winfo_width(), win.winfo_height()
             x = self.winfo_x() + (450 - ww) // 2
-            y = self.winfo_y() + (660 - wh) // 2
+            y = self.winfo_y() + (744 - wh) // 2
             win.geometry(f"+{x}+{y}")
             win.lift()
         win.after(10, _center)
