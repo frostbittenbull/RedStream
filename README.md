@@ -67,5 +67,7 @@ python main.py
 - Python 3.x
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp)
 - [ffmpeg](https://github.com/ffmpeg/ffmpeg)
+- [7zipExtra] (https://github.com/ip7z/7zip)
+- [upx] (https://github.com/upx/upx)
 - [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter)
 - [Pillow](https://github.com/python-pillow/Pillow)
