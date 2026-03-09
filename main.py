@@ -6,14 +6,36 @@ import re
 import time
 import ctypes
 import winreg
+import winsound
 import tkinter.filedialog as filedialog
 
 import customtkinter as ctk
 from PIL import Image
 
 def resource_path(name):
-    base = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+    base = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
     return os.path.join(base, name)
+
+APP_VERSION = "1.1"
+GITHUB_RELEASES_URL = "https://github.com/frostbittenbull/RedStream/releases/latest"
+GITHUB_API_URL      = "https://api.github.com/repos/frostbittenbull/RedStream/releases/latest"
+
+def play_sound(kind):
+    sounds = {
+        "success": r"C:\Windows\Media\Windows Background.wav",
+        "error":   r"C:\Windows\Media\Windows Foreground.wav",
+    }
+    path = sounds.get(kind, "")
+    def _play():
+        try:
+            if path and __import__("os").path.exists(path):
+                winsound.PlaySound(path, winsound.SND_FILENAME | winsound.SND_NODEFAULT)
+            else:
+                beep = winsound.MB_ICONASTERISK if kind == "success" else winsound.MB_ICONHAND
+                winsound.MessageBeep(beep)
+        except Exception:
+            pass
+    __import__("threading").Thread(target=_play, daemon=True).start()
 
 def get_downloads_folder():
     try:
@@ -29,16 +51,61 @@ def get_downloads_folder():
         pass
     return os.path.join(os.path.expanduser("~"), "Downloads")
 
+def get_settings_path():
+    base = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base, "settings.txt")
+
+def load_dest_folder():
+    path = get_settings_path()
+    if os.path.exists(path):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                folder = f.read().strip()
+            if folder:
+                return folder
+        except Exception:
+            pass
+    folder = os.path.join(get_downloads_folder(), "RedStream Downloader")
+    save_dest_folder(folder)
+    return folder
+
+def save_dest_folder(folder):
+    try:
+        with open(get_settings_path(), "w", encoding="utf-8") as f:
+            f.write(folder)
+    except Exception:
+        pass
+
 def force_taskbar(hwnd):
     try:
-        GWL_EXSTYLE    = -20
-        WS_EX_APPWINDOW = 0x00040000
+        GWL_EXSTYLE      = -20
+        WS_EX_APPWINDOW  = 0x00040000
         WS_EX_TOOLWINDOW = 0x00000080
         style = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
         style = (style & ~WS_EX_TOOLWINDOW) | WS_EX_APPWINDOW
         ctypes.windll.user32.SetWindowLongW(hwnd, GWL_EXSTYLE, style)
         ctypes.windll.user32.ShowWindow(hwnd, 0)
         ctypes.windll.user32.ShowWindow(hwnd, 9)
+    except Exception:
+        pass
+
+def set_window_icon(hwnd):
+    try:
+        icon_path = resource_path("icon.ico")
+        IMAGE_ICON   = 1
+        LR_LOADFROMFILE  = 0x00000010
+        LR_DEFAULTSIZE   = 0x00000040
+        WM_SETICON   = 0x0080
+        ICON_SMALL   = 0
+        ICON_BIG     = 1
+
+        hicon = ctypes.windll.user32.LoadImageW(
+            None, icon_path, IMAGE_ICON,
+            0, 0, LR_LOADFROMFILE | LR_DEFAULTSIZE,
+        )
+        if hicon:
+            ctypes.windll.user32.SendMessageW(hwnd, WM_SETICON, ICON_BIG,   hicon)
+            ctypes.windll.user32.SendMessageW(hwnd, WM_SETICON, ICON_SMALL, hicon)
     except Exception:
         pass
 
@@ -115,7 +182,7 @@ def make_combo(master, values, default, command=None):
 class CustomTitleBar(ctk.CTkFrame):
     H = 26
 
-    def __init__(self, master, title, on_close, on_minimize, on_about, **kw):
+    def __init__(self, master, title, on_close, on_minimize, on_about, on_update, **kw):
         super().__init__(master, height=self.H, fg_color="#151515", corner_radius=0, **kw)
         self.pack_propagate(False)
 
@@ -151,6 +218,13 @@ class CustomTitleBar(ctk.CTkFrame):
             fg_color="transparent", hover_color="#3a3a3a",
             text_color="#888888", font=("Segoe UI", 13, "bold"),
             corner_radius=0, command=on_about,
+        ).pack(side="right")
+
+        ctk.CTkButton(
+            self, text="↓", width=30, height=self.H,
+            fg_color="transparent", hover_color="#3a3a3a",
+            text_color="#888888", font=("Segoe UI", 13, "bold"),
+            corner_radius=0, command=on_update,
         ).pack(side="right")
 
         self._ox = self._oy = 0
@@ -203,9 +277,9 @@ def show_about(parent):
     GITHUB_URL = "https://github.com/frostbittenbull/RedStream"
     meta_rows = [
         ("Автор:",     "#frostbittenbull",   "#ffffff", None),
-        ("Сайт:",      "github.com",         "#4ea8de", GITHUB_URL),
-        ("Версия:",    "1.1",                "#aaaaaa", None),
-        ("Сборка:",    "09.03.2025",         "#aaaaaa", None),
+        ("Сайт:",      "github.com",    "#4ea8de", GITHUB_URL),
+        ("Версия:",    "1.0",                "#aaaaaa", None),
+        ("Сборка:",    "01.03.2025",         "#aaaaaa", None),
         ("Платформа:", "Windows 10/11",      "#aaaaaa", None),
     ]
     meta_frame = ctk.CTkFrame(popup, fg_color="transparent")
@@ -247,6 +321,260 @@ def show_about(parent):
         popup.lift()
     parent.after(15, _place)
 
+def show_updater(parent, app):
+    import urllib.request, shutil
+    popup = ctk.CTkFrame(parent, fg_color="#2a2a2a", corner_radius=0,
+                         border_width=1, border_color="#555555")
+
+    _state = {"running": False, "cancel": False, "proc": None}
+
+    def _close():
+        if _state["running"]:
+            return
+        popup.place_forget()
+        popup.destroy()
+
+    def _reset_buttons():
+        btn_ffmpeg.configure(state="normal", text="Обновить ffmpeg",
+                             fg_color="#ff0000", hover_color="#bf0000",
+                             command=_update_ffmpeg)
+        btn_ytdlp.configure(state="normal", text="Обновить yt-dlp",
+                            fg_color="#ff0000", hover_color="#bf0000",
+                            command=_update_ytdlp)
+        close_btn.configure(state="normal")
+        _state["running"] = False
+        _state["cancel"]  = False
+        _state["proc"]    = None
+
+    def _finish(text, status="success"):
+        color = "#00aa00" if status == "success" else "#ff0000"
+        try:
+            upd_progress.configure(progress_color=color)
+            upd_progress.set(1.0)
+            upd_label.configure(text=text)
+            _reset_buttons()
+            play_sound(status)
+        except Exception:
+            pass
+
+    def _cancel():
+        _state["cancel"] = True
+        if _state["proc"]:
+            try: _state["proc"].terminate()
+            except Exception: pass
+        upd_label.configure(text="Отмена…")
+
+    ctk.CTkLabel(popup, text="Обновление компонентов",
+                 text_color="#ff0000", font=("Segoe UI", 14, "bold")).pack(pady=(6, 6))
+    ctk.CTkFrame(popup, height=1, fg_color="#444444", corner_radius=0).pack(fill="x", padx=20, pady=(0, 12))
+    ctk.CTkLabel(
+        popup,
+        text="Перед обновлением убедитесь,\nчто нет активных загрузок.",
+        text_color="#cccccc", font=("Segoe UI", 12), justify="center",
+    ).pack(pady=(0, 12))
+    ctk.CTkFrame(popup, height=1, fg_color="#444444", corner_radius=0).pack(fill="x", padx=20, pady=(0, 12))
+
+    btn_ffmpeg = ctk.CTkButton(
+        popup, text="Обновить ffmpeg",
+        fg_color="#ff0000", hover_color="#bf0000",
+        text_color="white", font=("Segoe UI", 12, "bold"),
+        corner_radius=8, height=36,
+        command=lambda: _update_ffmpeg(),
+    )
+    btn_ffmpeg.pack(fill="x", padx=20, pady=(0, 8))
+
+    btn_ytdlp = ctk.CTkButton(
+        popup, text="Обновить yt-dlp",
+        fg_color="#ff0000", hover_color="#bf0000",
+        text_color="white", font=("Segoe UI", 12, "bold"),
+        corner_radius=8, height=36,
+        command=lambda: _update_ytdlp(),
+    )
+    btn_ytdlp.pack(fill="x", padx=20, pady=(0, 12))
+
+    ctk.CTkFrame(popup, height=1, fg_color="#444444", corner_radius=0).pack(fill="x", padx=20, pady=(0, 8))
+
+    progress_frame = ctk.CTkFrame(popup, fg_color="transparent")
+    upd_progress = ctk.CTkProgressBar(
+        progress_frame,
+        fg_color="#333333", progress_color="#333333",
+        border_color="#555555", border_width=1,
+        height=18, corner_radius=5,
+        width=200,
+    )
+    upd_progress.set(0)
+    upd_progress.pack(fill="x", pady=(0, 4))
+    upd_label = ctk.CTkLabel(
+        progress_frame, text="Ожидание…",
+        text_color="white", font=("Segoe UI", 11),
+    )
+    upd_label.pack()
+    progress_frame.pack(fill="x", padx=20, pady=(0, 4))
+
+    close_btn = ctk.CTkButton(
+        popup, text="ОК", fg_color="#ff0000", hover_color="#bf0000",
+        corner_radius=8, width=100, command=_close,
+    )
+    close_btn.pack(pady=(8, 16))
+
+    def _update_ffmpeg():
+        _state["running"] = True
+        _state["cancel"]  = False
+        btn_ffmpeg.configure(text="Отмена", fg_color="#555555", hover_color="#666666",
+                             command=_cancel)
+        btn_ytdlp.configure(state="disabled", fg_color="#444444", hover_color="#444444")
+        close_btn.configure(state="disabled")
+        upd_progress.configure(progress_color="#ffaa00")
+        upd_progress.set(0)
+        upd_label.configure(text="Подключение…")
+
+        URL      = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-essentials.7z"
+        base     = resource_path("")
+        out_file = os.path.join(base, "ffmpeg-git-essentials.7z")
+
+        def _worker():
+            try:
+                req   = urllib.request.urlopen(URL, timeout=60)
+                total = int(req.headers.get("Content-Length", 0))
+                done  = 0
+                chunk = 65536
+                with open(out_file, "wb") as f:
+                    while True:
+                        if _state["cancel"]:
+                            req.close()
+                            try: os.remove(out_file)
+                            except Exception: pass
+                            popup.after(0, lambda: _finish("Отменено.", "error"))
+                            return
+                        buf = req.read(chunk)
+                        if not buf:
+                            break
+                        f.write(buf)
+                        done += len(buf)
+                        if total > 0:
+                            pct     = done / total
+                            done_mb = done  / 1024 / 1024
+                            tot_mb  = total / 1024 / 1024
+                            txt = f"Скачивание: {pct*100:.1f}%  ({done_mb:.1f} МБ из {tot_mb:.1f} МБ)"
+                        else:
+                            pct = 0
+                            txt = f"Скачивание: {done/1024/1024:.1f} МБ…"
+                        _p, _t = pct, txt
+                        popup.after(0, lambda p=_p, t=_t: (
+                            upd_progress.set(p),
+                            upd_label.configure(text=t),
+                        ))
+
+                if _state["cancel"]:
+                    try: os.remove(out_file)
+                    except Exception: pass
+                    popup.after(0, lambda: _finish("Отменено.", "error"))
+                    return
+
+                popup.after(0, lambda: upd_label.configure(text="Распаковка архива…"))
+                sza = resource_path("7za.exe")
+                subprocess.run(
+                    [sza, "x", out_file, f"-o{base}", "-y"],
+                    cwd=base,
+                    creationflags=subprocess.CREATE_NO_WINDOW,
+                    check=True,
+                )
+
+                popup.after(0, lambda: upd_label.configure(text="Установка ffmpeg.exe…"))
+                for d in os.listdir(base):
+                    full = os.path.join(base, d)
+                    if os.path.isdir(full) and d.startswith("ffmpeg-") and "-git-" in d:
+                        src = os.path.join(full, "bin", "ffmpeg.exe")
+                        dst = os.path.join(base, "ffmpeg.exe")
+                        if os.path.exists(src):
+                            shutil.move(src, dst)
+                        shutil.rmtree(full, ignore_errors=True)
+                        break
+
+                try: os.remove(out_file)
+                except Exception: pass
+
+                popup.after(0, lambda: _finish("Успешно завершено!", "success"))
+
+            except Exception as e:
+                try: os.remove(out_file)
+                except Exception: pass
+                msg = f"Ошибка: {e}"
+                popup.after(0, lambda m=msg: _finish(m, "error"))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _update_ytdlp():
+        _state["running"] = True
+        _state["cancel"]  = False
+        btn_ytdlp.configure(text="Отмена", fg_color="#555555", hover_color="#666666",
+                            command=_cancel)
+        btn_ffmpeg.configure(state="disabled", fg_color="#444444", hover_color="#444444")
+        close_btn.configure(state="disabled")
+        upd_progress.configure(progress_color="#ffaa00")
+        upd_progress.set(0)
+        upd_label.configure(text="Проверка обновлений…")
+
+        def _pulse(i=0):
+            if not _state["running"]:
+                return
+            try:
+                upd_progress.set((i % 20) / 20)
+                popup.after(80, lambda: _pulse(i + 1))
+            except Exception:
+                pass
+        popup.after(80, _pulse)
+
+        def _worker():
+            try:
+                ytdlp = resource_path("yt-dlp.exe")
+                proc  = subprocess.Popen(
+                    [ytdlp, "-U"],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    cwd=resource_path(""),
+                    creationflags=subprocess.CREATE_NO_WINDOW,
+                    text=True, encoding="utf-8", errors="replace",
+                )
+                _state["proc"] = proc
+                output = []
+                for line in proc.stdout:
+                    if _state["cancel"]:
+                        proc.terminate()
+                        popup.after(0, lambda: _finish("Отменено.", "error"))
+                        return
+                    line = line.strip()
+                    if line:
+                        output.append(line)
+                proc.wait()
+
+                full = "\n".join(output).lower()
+                if "up to date" in full or "последняя версия" in full:
+                    popup.after(0, lambda: _finish("У вас установлена последняя версия.", "success"))
+                elif proc.returncode == 0:
+                    popup.after(0, lambda: _finish("Успешно обновлено!", "success"))
+                else:
+                    popup.after(0, lambda: _finish("Ошибка при обновлении.", "error"))
+
+            except Exception as e:
+                msg = f"Ошибка: {e}"
+                popup.after(0, lambda m=msg: _finish(m, "error"))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    popup.place(x=-9999, y=-9999)
+
+    def _place():
+        popup.update_idletasks()
+        pw, ph = parent.winfo_width(), parent.winfo_height()
+        ww = popup.winfo_reqwidth()
+        wh = popup.winfo_reqheight()
+        x = (pw - ww) // 2
+        y = (ph - wh) // 2
+        popup.place(x=x, y=y)
+        popup.lift()
+
+    parent.after(15, _place)
 class RedStreamApp(ctk.CTk):
     def __init__(self):
         super().__init__()
@@ -273,6 +601,7 @@ class RedStreamApp(ctk.CTk):
             on_close=self.destroy,
             on_minimize=self._minimize,
             on_about=lambda: show_about(self._root_frame),
+            on_update=lambda: show_updater(self._root_frame, self),
         )
         self._titlebar.pack(fill="x")
         ctk.CTkFrame(self._root_frame, height=1, fg_color="#333333", corner_radius=0).pack(fill="x")
@@ -285,8 +614,7 @@ class RedStreamApp(ctk.CTk):
         self._log_file  = os.path.join(os.environ.get("TEMP", "/tmp"), "yt_progress.txt")
         self._done_file = os.path.join(os.environ.get("TEMP", "/tmp"), "yt_done.txt")
 
-        downloads = get_downloads_folder()
-        self._dest_folder = os.path.join(downloads, "RedStream Downloader")
+        self._dest_folder = load_dest_folder()
 
         self._downloading_video_stream = True
 
@@ -324,6 +652,39 @@ class RedStreamApp(ctk.CTk):
 
             inner.bind("<Control-KeyPress>", _ctrl_key, add="+")
 
+            import tkinter as tk
+            ctx = tk.Menu(inner, tearoff=0,
+                          bg="#2a2a2a", fg="white",
+                          activebackground="#555555", activeforeground="white",
+                          bd=0, relief="flat")
+
+            def _ctx_select_all():
+                inner.selection_range(0, "end")
+                inner.focus_set()
+
+            def _ctx_copy():
+                if inner.selection_present():
+                    self.clipboard_clear()
+                    self.clipboard_append(inner.selection_get())
+
+            def _ctx_paste():
+                self._paste_url()
+
+            ctx.add_command(label="Выделить всё",  command=_ctx_select_all)
+            ctx.add_separator()
+            ctx.add_command(label="Копировать",    command=_ctx_copy)
+            ctx.add_command(label="Вставить",      command=_ctx_paste)
+
+            def _show_ctx(e):
+                has_sel = inner.selection_present()
+                ctx.entryconfigure("Копировать", state="normal" if has_sel else "disabled")
+                try:
+                    ctx.tk_popup(e.x_root, e.y_root)
+                finally:
+                    ctx.grab_release()
+
+            inner.bind("<Button-3>", _show_ctx, add="+")
+
             for cb in (self.browser_combo, self.format_combo,
                        self.vcodec_combo, self.acodec_combo, self.res_combo):
                 self._bind_combo_anywhere(cb)
@@ -336,10 +697,51 @@ class RedStreamApp(ctk.CTk):
             if not hwnd:
                 hwnd = self.winfo_id()
             force_taskbar(hwnd)
+            set_window_icon(hwnd)
             self.attributes("-topmost", True)
             self.after(400, lambda: self.attributes("-topmost", False))
+            self.after(1500, self._check_update)
 
         show_splash_on_app(self, _show_main)
+
+    def _check_update(self):
+        import urllib.request, json
+        def _worker():
+            try:
+                req = urllib.request.Request(
+                    GITHUB_API_URL, headers={"User-Agent": "RedStream"}
+                )
+                with urllib.request.urlopen(req, timeout=5) as r:
+                    tag = json.loads(r.read().decode()).get("tag_name", "").lstrip("v")
+                if tag and tag != APP_VERSION:
+                    self.after(0, lambda t=tag: self._show_update_banner(t))
+            except Exception:
+                pass
+        import threading
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _show_update_banner(self, new_version):
+        import webbrowser
+        banner = ctk.CTkFrame(
+            self._root_frame, height=26, fg_color="#ffaa00", corner_radius=0
+        )
+        banner.place(x=0, y=27, relwidth=1.0)
+        row = ctk.CTkFrame(banner, fg_color="transparent")
+        row.place(relx=0.5, rely=0.5, anchor="center")
+        ctk.CTkLabel(
+            row, text=f"Вышла новая версия «{new_version}». Нажмите ",
+            text_color="#1e1e1e", font=("Segoe UI", 11), fg_color="transparent"
+        ).pack(side="left")
+        ctk.CTkButton(
+            row, text="сюда", fg_color="transparent", hover_color="#f0a000",
+            text_color="#ff0000", font=("Segoe UI", 11, "underline"),
+            height=20, width=36, cursor="hand2",
+            command=lambda: webbrowser.open(GITHUB_RELEASES_URL)
+        ).pack(side="left")
+        ctk.CTkLabel(
+            row, text=", чтобы скачать.",
+            text_color="#1e1e1e", font=("Segoe UI", 11), fg_color="transparent"
+        ).pack(side="left")
 
     def _minimize(self):
         self.overrideredirect(False)
@@ -352,6 +754,7 @@ class RedStreamApp(ctk.CTk):
                 if not hwnd:
                     hwnd = self.winfo_id()
                 force_taskbar(hwnd)
+                set_window_icon(hwnd)
                 self.after(10, lambda: self.attributes("-topmost", False))
                 self.unbind("<Map>")
         self.bind("<Map>", _restore)
@@ -485,7 +888,7 @@ class RedStreamApp(ctk.CTk):
         self.progress_frame = ctk.CTkFrame(p, fg_color="transparent")
         self.progress_bar = ctk.CTkProgressBar(
             self.progress_frame,
-            fg_color="#333333", progress_color="#ff0000",
+            fg_color="#333333", progress_color="#ffaa00",
             border_color="#555555", border_width=1,
             height=18, corner_radius=5,
         )
@@ -570,6 +973,7 @@ class RedStreamApp(ctk.CTk):
         )
         if chosen:
             self._dest_folder = chosen
+            save_dest_folder(chosen)
             self.folder_entry.configure(state="normal")
             self.folder_entry.delete(0, "end")
             self.folder_entry.insert(0, self._dest_folder)
@@ -669,7 +1073,7 @@ class RedStreamApp(ctk.CTk):
 
         self.progress_frame.pack(fill="x", padx=20, pady=(8, 0))
         self.progress_bar.set(0)
-        self.progress_bar.configure(progress_color="#ff0000")
+        self.progress_bar.configure(progress_color="#ffaa00")
         self.progress_label.configure(text="Подключение и анализ…")
 
         def run():
@@ -697,7 +1101,7 @@ class RedStreamApp(ctk.CTk):
                 for line in reversed(lines):
                     if "ERROR:" in line:
                         last_status = "Ошибка! Проверьте ссылку или закройте браузер."
-                        self.progress_bar.configure(progress_color="#ffaa00")
+                        self.progress_bar.configure(progress_color="#ff0000")
                         error_found = True
                         break
                     elif "[download]" in line and "%" in line:
@@ -751,9 +1155,13 @@ class RedStreamApp(ctk.CTk):
                 self._timer_id = None
             self._restore_download_btn()
             if not error_found:
+                self.progress_bar.configure(progress_color="#00aa00")
                 self.progress_bar.set(1.0)
                 self.progress_label.configure(text="Успешно завершено!")
                 self.open_folder_btn.pack(fill="x", padx=20, pady=(8, 0))
+                play_sound("success")
+            else:
+                play_sound("error")
             for f in (self._log_file, self._done_file):
                 try: os.remove(f)
                 except Exception: pass
@@ -762,6 +1170,7 @@ class RedStreamApp(ctk.CTk):
         self._timer_id = self.after(500, self._check_progress)
 
     def _show_error(self, msg):
+        play_sound("error")
         win = ctk.CTkToplevel(self)
         win.overrideredirect(True)
         win.configure(fg_color="#2a2a2a")
