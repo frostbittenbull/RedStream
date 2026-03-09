@@ -14,6 +14,7 @@
 - Выбор видеокодека: **AV1**, **VP9**, **H.264**
 - Выбор аудиокодека: **OPUS**, **AAC**
 - Авторизация через браузер для видео с возрастными ограничениями
+- Обновление `yt-dlp` и `ffmpeg` внутри приложения.
 - Прогресс-бар с отображением скорости и размера загрузки
 - Кастомный заголовок окна и сплэш-экран при запуске
 
@@ -67,7 +68,7 @@ python main.py
 - Python 3.x
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp)
 - [ffmpeg](https://github.com/ffmpeg/ffmpeg)
-- [7zipExtra] (https://github.com/ip7z/7zip)
-- [upx] (https://github.com/upx/upx)
+- [7zipExtra](https://github.com/ip7z/7zip)
+- [upx](https://github.com/upx/upx)
 - [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter)
 - [Pillow](https://github.com/python-pillow/Pillow)
