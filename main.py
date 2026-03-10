@@ -16,7 +16,7 @@ def resource_path(name):
     base = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
     return os.path.join(base, name)
 
-APP_VERSION = "1.1"
+APP_VERSION = "1.2"
 GITHUB_RELEASES_URL = "https://github.com/frostbittenbull/RedStream/releases/latest"
 GITHUB_API_URL      = "https://api.github.com/repos/frostbittenbull/RedStream/releases/latest"
 
@@ -36,6 +36,22 @@ def play_sound(kind):
         except Exception:
             pass
     __import__("threading").Thread(target=_play, daemon=True).start()
+
+def show_toast(title, message):
+    def _worker():
+        try:
+            from winotify import Notification
+            icon = resource_path("icon.ico")
+            toast = Notification(
+                app_id="RedStream",
+                title=title,
+                msg=message,
+                icon=icon,
+            )
+            toast.show()
+        except Exception:
+            pass
+    threading.Thread(target=_worker, daemon=True).start()
 
 def get_downloads_folder():
     try:
@@ -73,6 +89,29 @@ def save_dest_folder(folder):
     try:
         with open(get_settings_path(), "w", encoding="utf-8") as f:
             f.write(folder)
+    except Exception:
+        pass
+
+def get_history_path():
+    base = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base, "history.txt")
+
+def load_history():
+    try:
+        with open(get_history_path(), "r", encoding="utf-8") as f:
+            return [l.strip() for l in f.readlines() if l.strip()]
+    except Exception:
+        return []
+
+def save_history(url):
+    history = load_history()
+    if url in history:
+        history.remove(url)
+    history.insert(0, url)
+    history = history[:5]
+    try:
+        with open(get_history_path(), "w", encoding="utf-8") as f:
+            f.write("\n".join(history))
     except Exception:
         pass
 
@@ -154,6 +193,7 @@ def show_splash_on_app(app, on_done):
     splash.attributes("-alpha", 0)
     splash.after(50, fade_in)
 
+
 def make_combo(master, values, default, command=None):
     def _on_select(choice):
         try: combo._close_dropdown_menu()
@@ -216,14 +256,14 @@ class CustomTitleBar(ctk.CTkFrame):
         ctk.CTkButton(
             self, text="?", width=34, height=self.H,
             fg_color="transparent", hover_color="#3a3a3a",
-            text_color="#888888", font=("Segoe UI", 13, "bold"),
+            text_color="#007aff", font=("Segoe UI", 13, "bold"),
             corner_radius=0, command=on_about,
         ).pack(side="right")
 
         ctk.CTkButton(
             self, text="↓", width=30, height=self.H,
             fg_color="transparent", hover_color="#3a3a3a",
-            text_color="#888888", font=("Segoe UI", 13, "bold"),
+            text_color="#00bf00", font=("Segoe UI", 13, "bold"),
             corner_radius=0, command=on_update,
         ).pack(side="right")
 
@@ -277,9 +317,9 @@ def show_about(parent):
     GITHUB_URL = "https://github.com/frostbittenbull/RedStream"
     meta_rows = [
         ("Автор:",     "#frostbittenbull",   "#ffffff", None),
-        ("Сайт:",      "github.com",    "#4ea8de", GITHUB_URL),
-        ("Версия:",    "1.0",                "#aaaaaa", None),
-        ("Сборка:",    "01.03.2025",         "#aaaaaa", None),
+        ("Сайт:",      "github.com",         "#4ea8de", GITHUB_URL),
+        ("Версия:",    "1.2",                "#aaaaaa", None),
+        ("Сборка:",    "10.03.2025",         "#aaaaaa", None),
         ("Платформа:", "Windows 10/11",      "#aaaaaa", None),
     ]
     meta_frame = ctk.CTkFrame(popup, fg_color="transparent")
@@ -400,7 +440,7 @@ def show_updater(parent, app):
         fg_color="#333333", progress_color="#333333",
         border_color="#555555", border_width=1,
         height=18, corner_radius=5,
-        width=200,
+        width=205,
     )
     upd_progress.set(0)
     upd_progress.pack(fill="x", pady=(0, 4))
@@ -626,16 +666,16 @@ class RedStreamApp(ctk.CTk):
 
             def _ctrl_key(e):
                 kc = e.keycode
-                if kc == 86:
-                    self._paste_url()
-                    return "break"
-                elif kc == 65:
+                if kc == 65:
                     inner.selection_range(0, "end")
                     return "break"
                 elif kc == 67:
                     if inner.selection_present():
                         self.clipboard_clear()
                         self.clipboard_append(inner.selection_get())
+                    return "break"
+                elif kc == 86:
+                    self._paste_url()
                     return "break"
                 elif kc == 88:
                     if inner.selection_present():
@@ -670,13 +710,21 @@ class RedStreamApp(ctk.CTk):
             def _ctx_paste():
                 self._paste_url()
 
+            def _ctx_cut():
+                if inner.selection_present():
+                    self.clipboard_clear()
+                    self.clipboard_append(inner.selection_get())
+                    inner.delete("sel.first", "sel.last")
+
             ctx.add_command(label="Выделить всё",  command=_ctx_select_all)
             ctx.add_separator()
+            ctx.add_command(label="Вырезать",      command=_ctx_cut)
             ctx.add_command(label="Копировать",    command=_ctx_copy)
             ctx.add_command(label="Вставить",      command=_ctx_paste)
 
             def _show_ctx(e):
                 has_sel = inner.selection_present()
+                ctx.entryconfigure("Вырезать",   state="normal" if has_sel else "disabled")
                 ctx.entryconfigure("Копировать", state="normal" if has_sel else "disabled")
                 try:
                     ctx.tk_popup(e.x_root, e.y_root)
@@ -684,6 +732,23 @@ class RedStreamApp(ctk.CTk):
                     ctx.grab_release()
 
             inner.bind("<Button-3>", _show_ctx, add="+")
+
+            _prev_url = [""]
+            def _on_url_change(*_):
+                url = self.url_entry.get().strip()
+                if url == _prev_url[0]:
+                    return
+                _prev_url[0] = url
+                if url.startswith("http"):
+                    self._preview_btn.configure(state="disabled", text="▶", fg_color="#444444", hover_color="#444444")
+                    self._preview_data = None
+                    self._start_spinner()
+                    self.after(100, lambda u=url: self._fetch_preview(u))
+                else:
+                    self._stop_spinner()
+                    self._preview_data = None
+                    self._preview_btn.configure(state="disabled", text="▶", fg_color="#444444", hover_color="#444444")
+            inner.bind("<KeyRelease>", _on_url_change, add="+")
 
             for cb in (self.browser_combo, self.format_combo,
                        self.vcodec_combo, self.acodec_combo, self.res_combo):
@@ -773,20 +838,36 @@ class RedStreamApp(ctk.CTk):
         url_row = ctk.CTkFrame(sec1, fg_color="transparent")
         url_row.pack(fill="x", pady=(4, 0))
         url_row.columnconfigure(0, weight=1)
-        self.url_entry = ctk.CTkEntry(
+        _history = load_history()
+        self.url_entry = ctk.CTkComboBox(
             url_row,
-            placeholder_text="https://www.example.com/…",
+            values=_history if _history else [""],
             fg_color="#333333", border_color="#555555",
             text_color="white", font=("Segoe UI", 12),
+            button_color="#555555", button_hover_color="#666666",
+            dropdown_fg_color="#2a2a2a", dropdown_text_color="white",
+            dropdown_hover_color="#444444",
+            state="normal",
+            command=self._on_history_select,
         )
+        self.url_entry.set("")
         self.url_entry.grid(row=0, column=0, sticky="ew")
+        self._preview_btn = ctk.CTkButton(
+            url_row, text="▶", width=28, height=28,
+            fg_color="#444444", hover_color="#444444",
+            corner_radius=4, font=("Segoe UI", 12),
+            state="disabled",
+            command=lambda: self._on_preview_btn(),
+        )
+        self._preview_btn.grid(row=0, column=1, padx=(4, 0))
+        self._add_tooltip(self._preview_btn, "Посмотреть превью")
         paste_btn = ctk.CTkButton(
             url_row, text="\u29be", width=28, height=28,
             fg_color="#555555", hover_color="#666666",
             corner_radius=4, font=("Segoe UI", 14),
             command=self._paste_url,
         )
-        paste_btn.grid(row=0, column=1, padx=(4, 0))
+        paste_btn.grid(row=0, column=2, padx=(4, 0))
         self._add_tooltip(paste_btn, "Вставить ссылку\nс буфера обмена")
 
         sec2 = self._section(p)
@@ -955,14 +1036,142 @@ class RedStreamApp(ctk.CTk):
         except Exception: pass
         combo.bind("<Button-1>", _open, add="+")
 
+    def _on_history_select(self, url):
+        if url and url.startswith("http"):
+            self._preview_btn.configure(state="disabled", text="▶", fg_color="#444444", hover_color="#444444")
+            self._preview_data = None
+            self._start_spinner()
+            self.after(100, lambda u=url: self._fetch_preview(u))
+
     def _paste_url(self):
         try: text = self.clipboard_get()
         except Exception: return
         inner = self.url_entry._entry
-        try: inner.delete("sel.first", "sel.last")
-        except Exception: pass
-        inner.insert("insert", text)
+        inner.delete(0, "end")
+        inner.insert(0, text)
         self.url_entry.focus_set()
+        url = text.strip()
+        if url.startswith("http"):
+            self._preview_data = None
+            self._preview_btn.configure(state="disabled", fg_color="#444444", hover_color="#444444")
+            self._start_spinner()
+            self.after(100, lambda: self._fetch_preview(url))
+
+    def _start_spinner(self):
+        self._spinner_frames = ["⠋","⠙","⠹","⠸","⠼","⠴","⠦","⠧","⠇","⠏"]
+        self._spinner_idx    = 0
+        self._spinner_running = True
+        self._spin_step()
+
+    def _spin_step(self):
+        if not getattr(self, "_spinner_running", False):
+            return
+        self._preview_btn.configure(text=self._spinner_frames[self._spinner_idx % len(self._spinner_frames)])
+        self._spinner_idx += 1
+        self._spinner_id = self.after(100, self._spin_step)
+
+    def _stop_spinner(self):
+        self._spinner_running = False
+        if hasattr(self, "_spinner_id"):
+            try: self.after_cancel(self._spinner_id)
+            except Exception: pass
+
+    def _on_preview_btn(self):
+        d = getattr(self, "_preview_data", None)
+        if d:
+            self._show_preview(d["title"], d["duration"], d["thumb_url"])
+
+    def _fetch_preview(self, url):
+        def _worker():
+            try:
+                ytdlp = resource_path("yt-dlp.exe")
+                result = subprocess.run(
+                    [ytdlp, "--dump-json", "--no-playlist", url],
+                    capture_output=True, text=True, encoding="utf-8",
+                    errors="replace", creationflags=subprocess.CREATE_NO_WINDOW,
+                    timeout=15,
+                )
+                if result.returncode != 0:
+                    self.after(0, self._stop_spinner)
+                    self.after(0, lambda: self._preview_btn.configure(state="disabled", text="▶"))
+                    return
+                import json
+                data = json.loads(result.stdout)
+                self._preview_data = {
+                    "title":     data.get("title", ""),
+                    "duration":  data.get("duration"),
+                    "thumb_url": data.get("thumbnail", ""),
+                }
+                self.after(0, self._stop_spinner)
+                self.after(0, lambda: self._preview_btn.configure(
+                    state="normal", text="▶", fg_color="#555555", hover_color="#666666"
+                ))
+            except Exception:
+                self.after(0, self._stop_spinner)
+                self.after(0, lambda: self._preview_btn.configure(state="disabled", text="▶"))
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _show_preview(self, title, duration, thumb_url):
+        import urllib.request
+        from io import BytesIO
+
+        if hasattr(self, "_preview_popup") and self._preview_popup:
+            try:
+                self._preview_popup.place_forget()
+                self._preview_popup.destroy()
+            except Exception:
+                pass
+            self._preview_popup = None
+
+        popup = ctk.CTkFrame(self._root_frame, fg_color="#2a2a2a",
+                             corner_radius=0, border_width=1, border_color="#555555")
+        self._preview_popup = popup
+
+        def _close():
+            popup.place_forget()
+            popup.destroy()
+            self._preview_popup = None
+
+        ctk.CTkLabel(popup, text="Превью видео", text_color="#ff0000",
+                     font=("Segoe UI", 13, "bold")).pack(pady=(12, 6))
+        ctk.CTkFrame(popup, height=1, fg_color="#444444", corner_radius=0).pack(fill="x", padx=16, pady=(0, 8))
+
+        if thumb_url:
+            try:
+                req = urllib.request.Request(thumb_url, headers={"User-Agent": "Mozilla/5.0"})
+                with urllib.request.urlopen(req, timeout=8) as r:
+                    img_data = r.read()
+                img = Image.open(BytesIO(img_data))
+                img.thumbnail((280, 160))
+                ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=img.size)
+                ctk.CTkLabel(popup, image=ctk_img, text="").pack(padx=16, pady=(0, 8))
+            except Exception:
+                pass
+
+        if title:
+            short = title if len(title) <= 50 else title[:47] + "…"
+            ctk.CTkLabel(popup, text=short, text_color="white",
+                         font=("Segoe UI", 11, "bold"),
+                         wraplength=260, justify="center").pack(padx=16, pady=(0, 4))
+
+        if duration:
+            mins, secs = divmod(int(duration), 60)
+            hrs,  mins = divmod(mins, 60)
+            dur_str = f"{hrs}:{mins:02d}:{secs:02d}" if hrs else f"{mins}:{secs:02d}"
+            ctk.CTkLabel(popup, text=f"⏱ {dur_str}", text_color="#aaaaaa",
+                         font=("Segoe UI", 11)).pack(pady=(0, 8))
+
+        ctk.CTkFrame(popup, height=1, fg_color="#444444", corner_radius=0).pack(fill="x", padx=16, pady=(0, 8))
+        ctk.CTkButton(popup, text="ОК", fg_color="#ff0000", hover_color="#bf0000",
+                      corner_radius=8, width=100, command=_close).pack(pady=(0, 12))
+
+        popup.update_idletasks()
+        pw = self._root_frame.winfo_width()
+        ph = self._root_frame.winfo_height()
+        ww = popup.winfo_reqwidth()
+        wh = popup.winfo_reqheight()
+        popup.place(x=(pw - ww) // 2, y=(ph - wh) // 2)
+        popup.lift()
 
     def _browse_folder(self):
         initial = self._dest_folder if os.path.isdir(self._dest_folder) else os.path.dirname(self._dest_folder)
@@ -1139,11 +1348,21 @@ class RedStreamApp(ctk.CTk):
                             f"({done_mb:,.2f} МБ из {total_mb:,.2f} МБ)"
                             .replace(",", " ").replace(".", ",")
                         )
+                        speed_m = re.search(r"at\s+([\d.]+)(\w+/s)", last_status)
+                        if speed_m:
+                            spd_val  = float(speed_m.group(1))
+                            spd_unit = speed_m.group(2).upper()
+                            conv = {"KIB/S": 1/1024, "MIB/S": 1, "GIB/S": 1024,
+                                    "KB/S": 1/1000, "MB/S": 1, "GB/S": 1000}
+                            spd_mb = spd_val * conv.get(spd_unit, 1)
+                            spd_str = f"  {spd_mb:.1f} МБ/с"
+                        else:
+                            spd_str = ""
                         if is_video_fmt:
                             label = "Загрузка видеопотока" if self._downloading_video_stream else "Загрузка аудиопотока"
                         else:
                             label = "Загрузка"
-                        self.progress_label.configure(text=f"{label}: {m.group(1)}% {size_str}")
+                        self.progress_label.configure(text=f"{label}: {m.group(1)}% {size_str}{spd_str}")
                 elif last_status:
                     self.progress_label.configure(text=last_status)
             except Exception:
@@ -1160,6 +1379,20 @@ class RedStreamApp(ctk.CTk):
                 self.progress_label.configure(text="Успешно завершено!")
                 self.open_folder_btn.pack(fill="x", padx=20, pady=(8, 0))
                 play_sound("success")
+                _url = self.url_entry.get().strip()
+                if _url:
+                    save_history(_url)
+                    self.url_entry.configure(values=load_history())
+                _video_title = ""
+                try:
+                    with open(self._log_file, "r", encoding="utf-8", errors="replace") as _lf:
+                        for _line in _lf:
+                            _m = re.search(r"\[download\] Destination: .+?[/\\](.+?)(\.\w+)?(\.\w+)?$", _line.rstrip())
+                            if _m:
+                                _video_title = _m.group(1)
+                except Exception:
+                    pass
+                show_toast("RedStream", f"{_video_title}\nСкачивание завершено!" if _video_title else "Скачивание завершено!")
             else:
                 play_sound("error")
             for f in (self._log_file, self._done_file):
