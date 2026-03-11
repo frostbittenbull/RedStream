@@ -362,7 +362,7 @@ def show_about(parent):
     parent.after(15, _place)
 
 def show_updater(parent, app):
-    import urllib.request, shutil
+    import urllib.request, urllib.error, shutil
     popup = ctk.CTkFrame(parent, fg_color="#2a2a2a", corner_radius=0,
                          border_width=1, border_color="#555555")
 
@@ -536,6 +536,11 @@ def show_updater(parent, app):
 
                 popup.after(0, lambda: _finish("Успешно завершено!", "success"))
 
+            except (urllib.error.URLError, urllib.error.HTTPError,
+                    TimeoutError, OSError, ConnectionError) as e:
+                try: os.remove(out_file)
+                except Exception: pass
+                popup.after(0, lambda: _finish("Ошибка! Проверьте подключение к интернету.", "error"))
             except Exception as e:
                 try: os.remove(out_file)
                 except Exception: pass
@@ -739,7 +744,7 @@ class RedStreamApp(ctk.CTk):
                 if url == _prev_url[0]:
                     return
                 _prev_url[0] = url
-                if url.startswith("http"):
+                if url.startswith("http") and url != "https://www.example.com/…":
                     self._preview_btn.configure(state="disabled", text="▶", fg_color="#444444", hover_color="#444444")
                     self._preview_data = None
                     self._start_spinner()
@@ -850,7 +855,19 @@ class RedStreamApp(ctk.CTk):
             state="normal",
             command=self._on_history_select,
         )
-        self.url_entry.set("")
+        placeholder = "https://www.example.com/…"
+        self.url_entry.set(placeholder)
+        self.url_entry.configure(text_color="#9e9e9e")
+        def clear_placeholder(event):
+            if self.url_entry.get() == placeholder:
+                self.url_entry.set("")
+                self.url_entry.configure(text_color="white")
+        def add_placeholder(event):
+            if not self.url_entry.get().strip():
+                self.url_entry.set(placeholder)
+                self.url_entry.configure(text_color="#666666")
+        self.url_entry._entry.bind("<FocusIn>", clear_placeholder, add="+")
+        self.url_entry._entry.bind("<FocusOut>", add_placeholder, add="+")
         self.url_entry.grid(row=0, column=0, sticky="ew")
         self._preview_btn = ctk.CTkButton(
             url_row, text="▶", width=28, height=28,
@@ -1220,6 +1237,7 @@ class RedStreamApp(ctk.CTk):
         self._restore_download_btn()
         self.progress_bar.configure(progress_color="#ffaa00")
         self.progress_label.configure(text="Загрузка отменена.")
+        play_sound("error")
 
     def _open_folder(self):
         os.makedirs(self._dest_folder, exist_ok=True)
@@ -1227,7 +1245,7 @@ class RedStreamApp(ctk.CTk):
 
     def _run_download(self):
         url = self.url_entry.get().strip()
-        if not url:
+        if not url or url == "https://www.example.com/…":
             self._show_error("Вставьте ссылку на видео или плейлист!")
             return
 
