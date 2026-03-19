@@ -1,7 +1,6 @@
 # RedStream: Video Downloader
 ![Preview](Preview.png)
 ## 📥 Простой и удобный загрузчик видео с популярных сайтов
-
 **RedStream** — десктопное приложение для Windows с минималистичным интерфейсом, позволяющее скачивать видео и аудио с YouTube, Instagram, TikTok и сотен других платформ. Построено на базе [yt-dlp](https://github.com/yt-dlp/yt-dlp), [ffmpeg](https://github.com/ffmpeg/ffmpeg), [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter) и [Pillow](https://github.com/python-pillow/Pillow).
 
 ---
@@ -10,21 +9,25 @@
 - Поддержка YouTube, Instagram, TikTok и [многих других сайтов](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md)
 - Скачивание видео в форматах **MKV** и **MP4**
 - Скачивание аудио в форматах **OPUS**, **M4A**, **MP3**
-- Выбор разрешения: от SD (480p) до 8K (4320p)
-- Выбор видеокодека: **AV1**, **VP9**, **H.264**
-- Выбор аудиокодека: **OPUS**, **AAC**
+- Динамический выбор разрешения, кодека и FPS на основе реальных форматов видео
+- Выбор видеокодека: **AV1**, **VP9**, **H.264** и другие (зависит от платформы)
+- Умный подбор AV1: если недоступен — автоматически выбирается лучшая альтернатива
+- Выбор аудиокодека: **OPUS**, **AAC** и другие
+- Предпросмотр видео с превью, названием и длительностью перед скачиванием
+- История последних 5 скачанных ссылок
 - Авторизация через браузер для видео с возрастными ограничениями
-- Обновление `yt-dlp` и `ffmpeg` внутри приложения.
-- Прогресс-бар с отображением скорости и размера загрузки
+- Обновление `yt-dlp` и `ffmpeg` внутри приложения
+- Прогрессбар с отображением процента, размера, типа потока и скорости загрузки
+- Уведомление Windows по завершении скачивания
+- Сворачивание в системный трей
 - Кастомный заголовок окна и сплэш-экран при запуске
 
 ---
 
 ## ⚙️ Установка:
-
 ### Вариант 1 — готовый `.exe` (рекомендуется):
 1. Скачать последний релиз из раздела [Releases](https://github.com/frostbittenbull/RedStream/releases)
-2. Запустить `RedStream.exe`
+2. Запустить установщик `RedStream_Setup_x64.exe`
 
 ### Вариант 2 — из исходников:
 ```bash
@@ -40,7 +43,7 @@ pip install -r requirements.txt
 python main.py
 ```
 
-> **Зависимости:** `customtkinter`, `Pillow`  
+> **Зависимости:** `customtkinter`, `Pillow`, `winotify`, `pystray`
 > **Требуется:** `yt-dlp.exe` и `ffmpeg.exe` в папке с приложением (или в `PATH`)
 
 ---
@@ -72,3 +75,5 @@ python main.py
 - [upx](https://github.com/upx/upx)
 - [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter)
 - [Pillow](https://github.com/python-pillow/Pillow)
+- [winotify](https://github.com/versa-syahptr/winotify)
+- [pystray](https://github.com/moses-palmer/pystray)
