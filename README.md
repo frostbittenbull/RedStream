@@ -1,7 +1,7 @@
 # RedStream: Video Downloader
 ![Preview](Preview.png)
 ## 📥 Простой и удобный загрузчик видео с популярных сайтов
-**RedStream** — десктопное приложение для Windows с минималистичным интерфейсом, позволяющее скачивать видео и аудио с YouTube, Instagram, TikTok и сотен других платформ. Построено на базе [yt-dlp](https://github.com/yt-dlp/yt-dlp), [ffmpeg](https://github.com/ffmpeg/ffmpeg), [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter) и [Pillow](https://github.com/python-pillow/Pillow).
+**RedStream** — десктопное приложение для Windows с минималистичным интерфейсом, позволяющее скачивать видео и аудио с YouTube, Instagram, TikTok и сотен других платформ. Построено на базе [yt-dlp](https://github.com/yt-dlp/yt-dlp), [ffmpeg](https://github.com/ffmpeg/ffmpeg) и [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter).
 
 ---
 
@@ -12,15 +12,17 @@
 - Динамический выбор разрешения, кодека и FPS на основе реальных форматов видео
 - Выбор видеокодека: **AV1**, **VP9**, **H.264** и другие (зависит от платформы)
 - Умный подбор AV1: если недоступен — автоматически выбирается лучшая альтернатива
-- Выбор аудиокодека: **OPUS**, **AAC** и другие
-- Предпросмотр видео с превью, названием и длительностью перед скачиванием
-- История последних 5 скачанных ссылок
+- Обрезка видео по таймкодам прямо при скачивании
+- Предпросмотр видео с превью, названием и длительностью
+- История скачанных ссылок
 - Авторизация через браузер для видео с возрастными ограничениями
-- Обновление `yt-dlp` и `ffmpeg` внутри приложения
+- Автоматическая проверка обновлений программы, yt-dlp и ffmpeg при запуске
+- Обновление компонентов внутри приложения
 - Прогрессбар с отображением процента, размера, типа потока и скорости загрузки
+- Прогресс скачивания в заголовке окна
 - Уведомление Windows по завершении скачивания
 - Сворачивание в системный трей
-- Кастомный заголовок окна и сплэш-экран при запуске
+- Настройки автозапуска при старте Windows
 
 ---
 
@@ -34,13 +36,10 @@
 git clone https://github.com/frostbittenbull/RedStream.git
 cd RedStream
 curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe -o yt-dlp.exe
-curl -L https://github.com/BtbN/FFmpeg-Builds/releases/latest/download/ffmpeg-master-latest-win64-gpl.zip -o ffmpeg.zip
-tar -xf ffmpeg.zip
-for /d %i in (ffmpeg-*-git-*) do move /y "%i\bin\ffmpeg.exe" .
-for /d %i in (ffmpeg-*-git-*) do rmdir /s /q "%i"
-del ffmpeg.zip
+curl -L https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-essentials.7z -o ffmpeg.7z
+# Распаковать ffmpeg.7z и положить ffmpeg.exe рядом с redstream.py
 pip install -r requirements.txt
-python main.py
+python redstream.py
 ```
 
 > **Зависимости:** `customtkinter`, `Pillow`, `winotify`, `pystray`
@@ -55,6 +54,16 @@ python main.py
 
 ## 📁 Куда сохраняются файлы:
 Все загруженные файлы сохраняются в папку `RedStream Downloader` внутри вашей папки «Загрузки». Папку можно изменить прямо в интерфейсе.
+
+---
+
+## ✂️ Обрезка видео:
+Нажмите кнопку ⚙ рядом с полем ввода ссылки. В открывшемся окне укажите таймкоды «Начало» и «Конец» в формате `ЧЧ:ММ:СС`. Если поля оставить пустыми — скачается целиком.
+
+---
+
+## 🔄 Автообновление компонентов:
+При каждом запуске RedStream автоматически проверяет наличие обновлений для самой программы, `yt-dlp` и `ffmpeg`. При обнаружении обновления появляется цветной баннер с кнопкой перехода к обновлению.
 
 ---
 
