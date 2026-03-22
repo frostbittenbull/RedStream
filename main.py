@@ -1,4 +1,5 @@
 import sys
+import json
 import os
 import subprocess
 import threading
@@ -17,7 +18,7 @@ def resource_path(name):
     base = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
     return os.path.join(base, name)
 
-APP_VERSION = "2.1"
+APP_VERSION = "2.2"
 GITHUB_RELEASES_URL = "https://github.com/frostbittenbull/RedStream/releases/latest"
 GITHUB_API_URL      = "https://api.github.com/repos/frostbittenbull/RedStream/releases/latest"
 
@@ -92,6 +93,41 @@ def save_dest_folder(folder):
             f.write(folder)
     except Exception:
         pass
+
+def get_proxy_path():
+    base = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base, "proxy.txt")
+
+def load_proxy():
+    try:
+        with open(get_proxy_path(), "r", encoding="utf-8") as f:
+            return json.loads(f.read())
+    except Exception:
+        return {"enabled": False, "type": "http", "host": "", "port": "", "user": "", "password": ""}
+
+def save_proxy(data):
+    try:
+        with open(get_proxy_path(), "w", encoding="utf-8") as f:
+            f.write(json.dumps(data, ensure_ascii=False))
+    except Exception:
+        pass
+
+def get_proxy_url():
+    p = load_proxy()
+    if not p.get("enabled") or not p.get("host"): return None
+    proto = p.get("type", "http")
+    host  = p.get("host", "")
+    port  = p.get("port", "")
+    user  = p.get("user", "")
+    pw    = p.get("password", "")
+    addr  = f"{host}:{port}" if port else host
+    if user and pw:
+        return f"{proto}://{user}:{pw}@{addr}"
+    return f"{proto}://{addr}"
+
+def get_log_path():
+    base = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base, "log.txt")
 
 def get_history_path():
     base = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
@@ -354,8 +390,8 @@ def show_about(parent):
     meta_rows = [
         ("Автор:",     "#frostbittenbull",   "#ffffff", None),
         ("Сайт:",      "github.com",         "#4ea8de", GITHUB_URL),
-        ("Версия:",    "2.1",                "#aaaaaa", None),
-        ("Сборка:",    "21.03.2025",         "#aaaaaa", None),
+        ("Версия:",    "2.2",                "#aaaaaa", None),
+        ("Сборка:",    "22.03.2025",         "#aaaaaa", None),
         ("Платформа:", "Windows 10/11",      "#aaaaaa", None),
     ]
     meta_frame = ctk.CTkFrame(popup, fg_color="transparent")
@@ -398,6 +434,765 @@ def show_about(parent):
         popup.place(x=x, y=y)
         popup.lift()
     parent.after(15, _place)
+
+def show_proxy_popup(app_root):
+    popup = ctk.CTkFrame(app_root._root_frame, fg_color="#2a2a2a", corner_radius=0,
+                         border_width=1, border_color="#555555")
+
+    def _close():
+        popup.place_forget()
+        popup.destroy()
+
+    _x_btn = ctk.CTkButton(popup, text="✕", width=28, height=18,
+                  fg_color="transparent", hover_color="#c42b1c",
+                  text_color="#bbbbbb", font=("Segoe UI", 12),
+                  corner_radius=0, command=lambda: _save_and_close(),
+                  )
+    _x_btn.place(relx=1.0, rely=0.0, anchor="ne", x=-1, y=1)
+
+    ctk.CTkLabel(popup, text="Настройки прокси",
+                 text_color="#ff0000", font=("Segoe UI", 14, "bold")).pack(pady=(16, 0), padx=20)
+    ctk.CTkFrame(popup, height=1, fg_color="#444444", corner_radius=0).pack(fill="x", padx=20, pady=(8, 6))
+
+    p = load_proxy()
+
+    enabled_var = ctk.IntVar(value=1 if p.get("enabled") else 0)
+    ctk.CTkCheckBox(popup, text="Использовать прокси", variable=enabled_var,
+                    text_color="white", font=("Segoe UI", 11),
+                    fg_color="#ff0000", hover_color="#bf0000",
+                    checkbox_width=12, checkbox_height=12, corner_radius=0,
+                    border_color="#555555",
+                    command=lambda: _toggle_proxy(),
+                    ).pack(anchor="w", padx=20, pady=(0, 6))
+    ctk.CTkFrame(popup, height=1, fg_color="#444444", corner_radius=0).pack(fill="x", padx=20, pady=(0, 0))
+
+    lbl_server = ctk.CTkLabel(popup, text="Сервер:", text_color="#aaaaaa",
+                 font=("Segoe UI", 11, "bold"), anchor="w")
+    lbl_server.pack(fill="x", padx=20)
+    srv_row = ctk.CTkFrame(popup, fg_color="transparent")
+    srv_row.pack(fill="x", padx=20, pady=(4, 10))
+    lbl_addr = ctk.CTkLabel(srv_row, text="Адрес:", text_color="#cccccc",
+                 font=("Segoe UI", 11), width=43, anchor="w")
+    lbl_addr.pack(side="left")
+    e_host = ctk.CTkEntry(srv_row, fg_color="#252525", border_color="#555555",
+                          text_color="white", font=("Segoe UI", 11), width=160)
+    e_host.insert(0, p.get("host", ""))
+    e_host.pack(side="left", padx=(0, 10))
+    lbl_port = ctk.CTkLabel(srv_row, text="Порт:", text_color="#cccccc",
+                 font=("Segoe UI", 11), width=35, anchor="w")
+    lbl_port.pack(side="left")
+    e_port = ctk.CTkEntry(srv_row, fg_color="#252525", border_color="#555555",
+                          text_color="white", font=("Segoe UI", 11), width=60)
+    e_port.insert(0, p.get("port", ""))
+    e_port.pack(side="left", padx=(4, 0))
+
+    sep_proto = ctk.CTkFrame(popup, height=1, fg_color="#333333", corner_radius=0)
+    sep_proto.pack(fill="x", padx=20, pady=(0, 6))
+    lbl_proto = ctk.CTkLabel(popup, text="Протокол:", text_color="#aaaaaa",
+                 font=("Segoe UI", 11, "bold"), anchor="w")
+    lbl_proto.pack(fill="x", padx=20)
+    proto_var = ctk.StringVar(value=p.get("type", "http"))
+    radio_btns = []
+    for label, val in [("SOCKS Version 5", "socks5"), ("SOCKS Version 4", "socks4"), ("HTTP / HTTPS", "http")]:
+        rb = ctk.CTkRadioButton(popup, text=label, variable=proto_var, value=val,
+                           text_color="white", font=("Segoe UI", 11),
+                           fg_color="#ff0000", hover_color="#bf0000",
+                           border_color="#555555",
+                           radiobutton_width=12, radiobutton_height=12,
+                           )
+        rb.pack(anchor="w", padx=20, pady=1)
+        radio_btns.append(rb)
+
+    sep_auth = ctk.CTkFrame(popup, height=1, fg_color="#333333", corner_radius=0)
+    sep_auth.pack(fill="x", padx=20, pady=(6, 6))
+    lbl_auth = ctk.CTkLabel(popup, text="Авторизация:", text_color="#aaaaaa",
+                 font=("Segoe UI", 11, "bold"), anchor="w")
+    lbl_auth.pack(fill="x", padx=20)
+    auth_var = ctk.IntVar(value=1 if (p.get("user") or p.get("password")) else 0)
+
+    def _toggle_auth():
+        proxy_on = bool(enabled_var.get())
+        auth_on  = bool(auth_var.get()) and proxy_on
+        state = "normal" if auth_on else "disabled"
+        fg = "#252525" if auth_on else "#333333"
+        tc = "white" if auth_on else "#555555"
+        for e in (e_user, e_pass):
+            e.configure(state=state, fg_color=fg, text_color=tc)
+
+    auth_cb = ctk.CTkCheckBox(popup, text="Включить", variable=auth_var, command=_toggle_auth,
+                    text_color="white", font=("Segoe UI", 11),
+                    fg_color="#ff0000", hover_color="#bf0000",
+                    checkbox_width=12, checkbox_height=12, corner_radius=0,
+                    border_color="#555555",
+                    )
+    auth_cb.pack(anchor="w", padx=20, pady=(2, 4))
+
+    auth_frame = ctk.CTkFrame(popup, fg_color="transparent")
+    auth_frame.pack(fill="x", padx=20, pady=(0, 24))
+    lbl_user = ctk.CTkLabel(auth_frame, text="Пользователь:", text_color="#cccccc",
+                     font=("Segoe UI", 11), width=86, anchor="w")
+    lbl_user.grid(row=0, column=0, pady=2, sticky="w")
+    lbl_pass = ctk.CTkLabel(auth_frame, text="Пароль:", text_color="#cccccc",
+                     font=("Segoe UI", 11), width=86, anchor="w")
+    lbl_pass.grid(row=1, column=0, pady=2, sticky="w")
+    e_user = ctk.CTkEntry(auth_frame, fg_color="#333333", border_color="#555555",
+                          text_color="white", font=("Segoe UI", 11), width=226)
+    e_user.insert(0, p.get("user", ""))
+    e_user.grid(row=0, column=1, pady=2, sticky="w")
+    e_pass = ctk.CTkEntry(auth_frame, fg_color="#333333", border_color="#555555",
+                          text_color="white", font=("Segoe UI", 11), width=226, show="●")
+    e_pass.insert(0, p.get("password", ""))
+    e_pass.grid(row=1, column=1, pady=2, sticky="w")
+
+    def _toggle_proxy():
+        proxy_on     = bool(enabled_var.get())
+        entry_state  = "normal"  if proxy_on else "disabled"
+        entry_fg     = "#252525" if proxy_on else "#333333"
+        entry_tc     = "white"   if proxy_on else "#555555"
+        lbl_dim      = "#aaaaaa" if proxy_on else "#555555"
+        lbl_dim2     = "#cccccc" if proxy_on else "#555555"
+        for e, fg in ((e_host, "#252525"), (e_port, "#252525")):
+            e.configure(state=entry_state, fg_color=fg if proxy_on else "#333333", text_color=entry_tc)
+        for lbl in (lbl_server, lbl_proto, lbl_auth):
+            lbl.configure(text_color=lbl_dim)
+        for lbl in (lbl_addr, lbl_port, lbl_user, lbl_pass):
+            lbl.configure(text_color=lbl_dim2)
+        for rb in radio_btns:
+            rb.configure(state=entry_state, text_color=entry_tc)
+        auth_cb.configure(state=entry_state, text_color=entry_tc)
+        _toggle_auth()
+
+    _toggle_proxy()
+    _toggle_auth()
+
+    def _save_and_close():
+        save_proxy({
+            "enabled": bool(enabled_var.get()),
+            "type": proto_var.get(),
+            "host": e_host.get().strip(),
+            "port": e_port.get().strip(),
+            "user": e_user.get().strip() if auth_var.get() else "",
+            "password": e_pass.get().strip() if auth_var.get() else "",
+        })
+        _close()
+
+    popup.update_idletasks()
+    pw = app_root._root_frame.winfo_width()
+    ph = app_root._root_frame.winfo_height()
+    ww, wh = popup.winfo_reqwidth(), popup.winfo_reqheight()
+    popup.place(x=(pw - ww) // 2, y=(ph - wh) // 2)
+    popup.lift()
+
+def show_scheduler(toolbar_btn, app_root):
+    import tkinter as tk
+    import datetime
+    import calendar as _calendar
+
+    existing = getattr(app_root, '_scheduler_popup', None)
+    if existing:
+        try:
+            if existing.winfo_exists():
+                pw = app_root._root_frame.winfo_width()
+                ph = app_root._root_frame.winfo_height()
+                ww = existing.winfo_reqwidth()
+                wh = existing.winfo_reqheight()
+                existing.place(x=(pw - ww) // 2, y=(ph - wh) // 2)
+                existing.lift()
+                return
+        except Exception:
+            pass
+        app_root._scheduler_popup = None
+
+    popup = ctk.CTkFrame(app_root._root_frame, fg_color="#2a2a2a", corner_radius=0,
+                         border_width=1, border_color="#555555")
+    app_root._scheduler_popup = popup
+
+    _cal_popup = [None]
+
+    def _close():
+        try:
+            if _cal_popup[0]:
+                _cal_popup[0].destroy()
+                _cal_popup[0] = None
+        except Exception:
+            pass
+        try:
+            popup.place_forget()
+        except Exception:
+            pass
+
+    ctk.CTkButton(popup, text="✕", width=28, height=18,
+                  fg_color="transparent", hover_color="#c42b1c",
+                  text_color="#bbbbbb", font=("Segoe UI", 12),
+                  corner_radius=0, command=_close,
+                  ).place(relx=1.0, rely=0.0, anchor="ne", x=-1, y=1)
+
+    ctk.CTkLabel(popup, text="Планировщик загрузок",
+                 text_color="#ff0000", font=("Segoe UI", 14, "bold")).pack(pady=(17, 0), padx=20)
+    ctk.CTkFrame(popup, height=1, fg_color="#444444", corner_radius=0).pack(fill="x", padx=20, pady=(0, ))
+
+    ctk.CTkLabel(popup, text="Начать скачивание в:",
+                 text_color="#aaaaaa", font=("Segoe UI", 11, "bold"), anchor="w").pack(fill="x", padx=20, pady=(4, 0))
+
+    dt_row = ctk.CTkFrame(popup, fg_color="transparent")
+    dt_row.pack(anchor="w", padx=20, pady=(6, 0))
+
+    now = datetime.datetime.now()
+    h_var = tk.StringVar(value=now.strftime("%H"))
+    m_var = tk.StringVar(value=now.strftime("%M"))
+    s_var = tk.StringVar(value=now.strftime("%S"))
+    date_var = tk.StringVar(value=now.strftime("%d.%m.%Y"))
+
+    BOX_H = 24
+
+    def _spin(var, frm, to, delta):
+        try: v = int(var.get())
+        except ValueError: v = frm
+        v = (v + delta - frm) % (to - frm + 1) + frm
+        var.set(f"{v:02d}")
+
+    time_frame = ctk.CTkFrame(dt_row, fg_color="#333333", border_color="#555555",
+                               border_width=2, corner_radius=6)
+    time_frame.pack(side="left", padx=(0, 8))
+
+    def _add_spin(parent, var, frm, to):
+        ctk.CTkEntry(parent, textvariable=var, width=28, height=BOX_H,
+                     fg_color="transparent", border_width=0,
+                     text_color="white", font=("Segoe UI", 11),
+                     justify="center").pack(side="left", padx=2, pady=2)
+
+    _add_spin(time_frame, h_var, 0, 23)
+    ctk.CTkLabel(time_frame, text=":", text_color="#aaaaaa",
+                 font=("Segoe UI", 13, "bold"), width=8, height=BOX_H).pack(side="left", pady=2)
+    _add_spin(time_frame, m_var, 0, 59)
+    ctk.CTkLabel(time_frame, text=":", text_color="#aaaaaa",
+                 font=("Segoe UI", 13, "bold"), width=8, height=BOX_H).pack(side="left", pady=2)
+    _add_spin(time_frame, s_var, 0, 59)
+
+    date_frame = ctk.CTkFrame(dt_row, fg_color="#333333", border_color="#555555",
+                               border_width=2, corner_radius=6)
+    date_frame.pack(side="left")
+
+    date_entry = ctk.CTkEntry(date_frame, textvariable=date_var, width=88, height=BOX_H,
+                               fg_color="transparent", border_width=0,
+                               text_color="white", font=("Segoe UI", 11), justify="center")
+    date_entry.pack(side="left", padx=(6, 0), pady=2)
+
+    def _show_calendar():
+        if _cal_popup[0]:
+            try: _cal_popup[0].destroy()
+            except Exception: pass
+            _cal_popup[0] = None
+            return
+
+        cal_win = tk.Toplevel()
+        cal_win.overrideredirect(True)
+        cal_win.configure(bg="#2a2a2a")
+        cal_win.attributes("-topmost", True)
+        _cal_popup[0] = cal_win
+
+        try:
+            dd, mm, yy = date_var.get().split(".")
+            cur = datetime.date(int(yy), int(mm), int(dd))
+        except Exception:
+            cur = datetime.date.today()
+
+        _cs = {"year": cur.year, "month": cur.month}
+
+        outer = tk.Frame(cal_win, bg="#555555", bd=1)
+        outer.pack(padx=0, pady=0)
+        cal_frame = tk.Frame(outer, bg="#2a2a2a", bd=0)
+        cal_frame.pack(padx=1, pady=1)
+
+        MONTHS_RU = ["","Январь","Февраль","Март","Апрель","Май","Июнь",
+                     "Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"]
+
+        def _render():
+            for w in cal_frame.winfo_children(): w.destroy()
+            y, mo = _cs["year"], _cs["month"]
+
+            hdr = tk.Frame(cal_frame, bg="#2a2a2a")
+            hdr.grid(row=0, column=0, columnspan=7, pady=(6,2))
+            tk.Button(hdr, text="◄", bg="#2a2a2a", fg="#aaaaaa", relief="flat",
+                      font=("Segoe UI", 9), cursor="hand2", activebackground="#333333",
+                      command=lambda: [_cs.update({"month":12,"year":y-1} if mo==1 else {"month":mo-1}), _render()]
+                      ).pack(side="left", padx=2)
+            tk.Label(hdr, text=f"{MONTHS_RU[mo]} {y}", bg="#2a2a2a", fg="white",
+                     font=("Segoe UI", 10, "bold"), width=14).pack(side="left")
+            tk.Button(hdr, text="►", bg="#2a2a2a", fg="#aaaaaa", relief="flat",
+                      font=("Segoe UI", 9), cursor="hand2", activebackground="#333333",
+                      command=lambda: [_cs.update({"month":1,"year":y+1} if mo==12 else {"month":mo+1}), _render()]
+                      ).pack(side="left", padx=2)
+
+            for ci, day_name in enumerate(["Пн","Вт","Ср","Чт","Пт","Сб","Вс"]):
+                tk.Label(cal_frame, text=day_name, bg="#2a2a2a", fg="#666666",
+                         font=("Segoe UI", 9), width=3).grid(row=1, column=ci, padx=2, pady=(0,2))
+
+            first_wd, days_in = _calendar.monthrange(y, mo)
+            today = datetime.date.today()
+            try:
+                sd, sm, sy = date_var.get().split(".")
+                selected = datetime.date(int(sy), int(sm), int(sd))
+            except Exception:
+                selected = None
+
+            r, c = 2, first_wd
+            for d in range(1, days_in + 1):
+                d_date = datetime.date(y, mo, d)
+                is_sel   = (d_date == selected)
+                is_today = (d_date == today)
+                bg = "#cc0000" if is_sel else ("#444444" if is_today else "#2a2a2a")
+                fg = "white"
+                def _pick(dd=d, yy=y, mm=mo):
+                    date_var.set(f"{dd:02d}.{mm:02d}.{yy}")
+                    try: _cal_popup[0].destroy()
+                    except Exception: pass
+                    _cal_popup[0] = None
+                tk.Button(cal_frame, text=str(d), bg=bg, fg=fg, relief="flat",
+                          font=("Segoe UI", 9), width=3, cursor="hand2",
+                          activebackground="#bf0000", activeforeground="white",
+                          command=_pick).grid(row=r, column=c, padx=2, pady=1)
+                c += 1
+                if c > 6: c = 0; r += 1
+
+            today_str = today.strftime("%d.%m.%Y")
+            tk.Button(cal_frame, text=f"Сегодня: {today_str}",
+                      bg="#333333", fg="#aaaaaa", relief="flat",
+                      font=("Segoe UI", 9), cursor="hand2", activebackground="#444444",
+                      command=lambda: [date_var.set(today_str),
+                                       _cal_popup[0].destroy() or _cal_popup.__setitem__(0, None)]
+                      ).grid(row=r+1, column=0, columnspan=7, sticky="ew", padx=4, pady=(4,6))
+
+        _render()
+        cal_win.update_idletasks()
+        bx = cal_btn.winfo_rootx()
+        by = cal_btn.winfo_rooty() + cal_btn.winfo_height() + 2
+        cal_win.geometry(f"+{bx}+{by}")
+
+    cal_btn = ctk.CTkButton(date_frame, text="📅", width=28, height=BOX_H,
+                             fg_color="transparent", hover_color="#444444",
+                             text_color="#aaaaaa", font=("Segoe UI", 12),
+                             corner_radius=0, command=_show_calendar)
+    cal_btn.pack(side="left", padx=(0, 4), pady=2)
+
+    ctk.CTkFrame(popup, height=1, fg_color="#444444", corner_radius=0).pack(fill="x", padx=20, pady=(10, 8))
+
+    ctk.CTkLabel(popup, text="Ссылки для скачивания:",
+                 text_color="#aaaaaa", font=("Segoe UI", 11, "bold"), anchor="w").pack(fill="x", padx=20, pady=(4, 0))
+
+    scroll_outer = ctk.CTkFrame(popup, fg_color="#252525", corner_radius=8, height=106)
+    scroll_outer.pack(fill="x", padx=20, pady=(4, 0))
+    scroll_outer.pack_propagate(False)
+    scroll_frame = ctk.CTkScrollableFrame(scroll_outer, fg_color="transparent", corner_radius=0,
+                                           scrollbar_button_color="#555555",
+                                           scrollbar_button_hover_color="#666666")
+    scroll_frame.pack(fill="both", expand=True, padx=2, pady=2)
+    scroll_frame.grid_columnconfigure(0, weight=1)
+
+    url_entries = []
+
+    def _add_url_row(text=""):
+        row_idx = len(url_entries)
+        row = ctk.CTkFrame(scroll_frame, fg_color="transparent")
+        row.grid(row=row_idx, column=0, sticky="ew", pady=2)
+        row.grid_columnconfigure(0, weight=1)
+        e = ctk.CTkEntry(row, fg_color="#333333", border_color="#555555",
+                         text_color="white", font=("Segoe UI", 11),
+                         placeholder_text="Вставьте ссылку…",
+                         placeholder_text_color="#555555")
+        if text:
+            e.insert(0, text)
+        e.grid(row=0, column=0, sticky="ew", padx=(0, 4))
+        def _remove(r=row, entry=e):
+            if entry in url_entries:
+                url_entries.remove(entry)
+            r.destroy()
+            for i, en in enumerate(url_entries):
+                en.master.grid(row=i, column=0, sticky="ew", pady=2)
+        ctk.CTkButton(row, text="✕", width=24, height=28,
+                      fg_color="#3a3a3a", hover_color="#c42b1c",
+                      text_color="#aaaaaa", font=("Segoe UI", 11),
+                      corner_radius=6, command=_remove).grid(row=0, column=1)
+        url_entries.append(e)
+
+    _add_url_row()
+
+    ctk.CTkButton(popup, text="＋ Добавить ссылку",
+                  fg_color="transparent", hover_color="#3a3a3a",
+                  text_color="#aaaaaa", font=("Segoe UI", 11),
+                  corner_radius=6, border_width=1, border_color="#444444",
+                  height=26, command=_add_url_row,
+                  ).pack(fill="x", padx=20, pady=(4, 0))
+
+    ctk.CTkFrame(popup, height=1, fg_color="#444444", corner_radius=0).pack(fill="x", padx=20, pady=(10, 8))
+
+    ctk.CTkLabel(popup, text="Параметры загрузки:",
+                 text_color="#aaaaaa", font=("Segoe UI", 11, "bold"), anchor="w").pack(fill="x", padx=20, pady=(4, 0))
+
+    combos_frame = ctk.CTkFrame(popup, fg_color="transparent")
+    combos_frame.pack(fill="x", padx=20, pady=(4, 0))
+    combos_frame.grid_columnconfigure((0,1,2,3), weight=1)
+
+    for ci, lbl in enumerate(["Контейнер/Формат:", "Видеокодек:", "Аудиокодек:", "Разрешение:"]):
+        ctk.CTkLabel(combos_frame, text=lbl, text_color="#aaaaaa",
+                     font=("Segoe UI", 11), anchor="w", height=14).grid(
+                         row=0, column=ci, sticky="w", padx=(0 if ci==0 else 4, 0))
+
+    sch_format_map = {
+        "Видео: MKV": "mkv", "Видео: MP4": "mp4",
+        "Аудио: OPUS": "opus", "Аудио: M4A": "m4a", "Аудио: MP3": "mp3",
+    }
+
+    def _sch_combo(values, default, col, on_change=None):
+        cb = make_combo(combos_frame, values=values, default=default, command=on_change)
+        cb.grid(row=1, column=col, sticky="ew", padx=(0 if col==0 else 4, 0), pady=(2, 0))
+
+        app_root._bind_combo_anywhere(cb)
+
+        _orig = getattr(cb, "_open_dropdown_menu", None)
+        if _orig:
+            def _patched(_cb=cb, _o=_orig):
+                _o()
+                def _do_lift():
+                    try:
+                        import tkinter as _tk
+                        for w in _cb.winfo_toplevel().winfo_children():
+                            if isinstance(w, _tk.Toplevel):
+                                w.lift()
+                    except Exception:
+                        pass
+                _cb.after(30, _do_lift)
+            cb._open_dropdown_menu = _patched
+        return cb
+
+    def _on_sch_format(choice):
+        is_audio = sch_format_map.get(choice, "mp4") in ("opus","m4a","mp3")
+        for cb in (sch_vcodec_cb, sch_res_cb):
+            app_root._set_combo_state(cb, "disabled" if is_audio else "normal")
+
+    sch_fmt_cb    = _sch_combo(list(sch_format_map.keys()), "Видео: MP4", 0, on_change=_on_sch_format)
+    sch_vcodec_cb = _sch_combo(["AV1","VP9","H.264","-"], "AV1", 1)
+    sch_acodec_cb = _sch_combo(["OPUS","AAC","-"], "OPUS", 2)
+    sch_res_cb    = _sch_combo(["4320p","2160p","1440p","1080p","720p","480p","-"], "1080p", 3)
+
+    ctk.CTkFrame(popup, height=1, fg_color="#444444", corner_radius=0).pack(fill="x", padx=20, pady=(10, 8))
+
+    status_label = ctk.CTkLabel(popup, text="", text_color="#aaaaaa", font=("Segoe UI", 10))
+    status_label.pack(pady=(0, 4))
+
+    def _get_scheduled_datetime():
+        try:
+            dd, mm, yy = date_var.get().split(".")
+            return datetime.datetime(int(yy), int(mm), int(dd),
+                                     int(h_var.get()), int(m_var.get()), int(s_var.get()))
+        except Exception:
+            return None
+
+    def _build_ytdlp_args(url):
+        fmt  = sch_format_map.get(sch_fmt_cb.get(), "mp4")
+        vc   = {"AV1":"av01","VP9":"vp9","H.264":"avc1"}.get(sch_vcodec_cb.get(),"")
+        ac   = {"OPUS":"opus","AAC":"mp4a"}.get(sch_acodec_cb.get(),"")
+        res  = sch_res_cb.get()
+        is_audio = fmt in ("opus","m4a","mp3")
+        ytdlp = resource_path("yt-dlp.exe")
+        dest  = os.path.join(app_root._dest_folder, "%(title)s.%(ext)s")
+        proxy_url = get_proxy_url()
+        proxy_opt = ["--proxy", proxy_url] if proxy_url else []
+        if is_audio:
+            ac_cond = f"[acodec^={ac}]" if ac else ""
+            args = [ytdlp,"--newline","--no-colors","--encoding","utf-8"] + proxy_opt + \
+                   ["-f", f"bestaudio{ac_cond}/bestaudio", "-x","--audio-format", fmt]
+            if fmt == "mp3": args += ["--audio-quality","0"]
+        else:
+            v_cond = []
+            if res and res != "-": v_cond.append(f"height<={res.replace('p','')}")
+            if vc: v_cond.append(f"vcodec^={vc}")
+            v_str  = "[" + "][".join(v_cond) + "]" if v_cond else ""
+            ac_cond = f"[acodec^={ac}]" if ac else ""
+            sort_s = ([f"vcodec:{vc}"] if vc else []) + ([f"acodec:{ac}"] if ac else [])
+            args = [ytdlp,"--newline","--no-colors","--encoding","utf-8"] + proxy_opt + \
+                   ["-f", f"bestvideo{v_str}+bestaudio{ac_cond}/bestvideo+bestaudio/best"]
+            if sort_s: args += ["-S", ",".join(sort_s)]
+            args += ["--merge-output-format", fmt]
+        args += ["-o", dest, url]
+        return args
+
+    def _update_status(text, color="#aaaaaa"):
+        state = getattr(app_root, '_scheduler_state', {})
+        state['status_text']  = text
+        state['status_color'] = color
+        app_root._scheduler_state = state
+        try: status_label.configure(text=text, text_color=color)
+        except Exception: pass
+
+    def _run_scheduled():
+        target = _get_scheduled_datetime()
+        if not target:
+            _update_status("⚠ Неверный формат даты/времени!", "#ff4444"); return
+        urls = [e.get().strip() for e in url_entries if e.get().strip()]
+        if not urls:
+            _update_status("⚠ Добавьте хотя бы одну ссылку!", "#ff4444"); return
+        delta = (target - datetime.datetime.now()).total_seconds()
+        if delta < 0:
+            _update_status("⚠ Указанное время уже прошло!", "#ff4444"); return
+
+        app_root._scheduler_state = {'running': True, 'cancelled': False, 'status_text': '', 'status_color': '#aaaaaa'}
+        try:
+            start_btn.configure(text="ОТМЕНА", fg_color="#555555", hover_color="#444444",
+                                command=_cancel_scheduled)
+        except Exception: pass
+
+        def _countdown():
+            if app_root._scheduler_state.get('cancelled'): return
+            remaining = (target - datetime.datetime.now()).total_seconds()
+            if remaining > 0:
+                r = int(remaining)
+                years  = r // 31536000; r %= 31536000
+                months = r // 2592000;  r %= 2592000
+                days   = r // 86400;    r %= 86400
+                hours  = r // 3600;     r %= 3600
+                mins   = r // 60;       secs = r % 60
+                parts = []
+                if years:  parts.append(f"{years} г.")
+                if months: parts.append(f"{months} мес.")
+                if days:   parts.append(f"{days} д.")
+                if hours:  parts.append(f"{hours} ч.")
+                if mins:   parts.append(f"{mins} мин.")
+                parts.append(f"{secs} сек.")
+                _update_status(f"⏱ Запуск через {' '.join(parts)} ({len(urls)} ссылок)", "#00bf00")
+                try: app_root.after(1000, _countdown)
+                except Exception: pass
+                return
+            _update_status(f"▶ Скачивание {len(urls)} ссылок…", "#ffaa00")
+            try: start_btn.configure(state="disabled", text="ОТМЕНА")
+            except Exception: pass
+
+            def _download_all():
+                for i, url in enumerate(urls):
+                    if app_root._scheduler_state.get('cancelled'): break
+                    _update_status(f"⬇ Скачивание {i+1}/{len(urls)} — {url[:40]}…", "#ffaa00")
+                    proc = subprocess.Popen(_build_ytdlp_args(url), creationflags=subprocess.CREATE_NO_WINDOW)
+                    app_root._scheduler_state['proc'] = proc
+                    proc.wait()
+                if not app_root._scheduler_state.get('cancelled'):
+                    _update_status(f"✓ Завершено {len(urls)} загрузок!", "#00bf00")
+                    play_sound("success")
+                    show_toast("RedStream", f"Планировщик завершил {len(urls)} загрузок.")
+                app_root._scheduler_state['running'] = False
+                try:
+                    start_btn.configure(state="normal", text="ЗАПЛАНИРОВАТЬ",
+                                        fg_color="#ff0000", hover_color="#bf0000",
+                                        command=_run_scheduled)
+                except Exception: pass
+            threading.Thread(target=_download_all, daemon=True).start()
+
+        app_root.after(0, _countdown)
+
+    def _cancel_scheduled():
+        state = getattr(app_root, '_scheduler_state', {})
+        state['cancelled'] = True
+        state['running'] = False
+        proc = state.get('proc')
+        if proc:
+            try: proc.terminate()
+            except Exception: pass
+        _update_status("✕ Отменено", "#ff4444")
+        try:
+            start_btn.configure(text="ЗАПЛАНИРОВАТЬ", fg_color="#ff0000", hover_color="#bf0000",
+                                state="normal", command=_run_scheduled)
+        except Exception: pass
+
+    start_btn = ctk.CTkButton(popup, text="ЗАПЛАНИРОВАТЬ",
+                               fg_color="#ff0000", hover_color="#bf0000",
+                               text_color="white", font=("Segoe UI", 13, "bold"),
+                               corner_radius=6, height=36, command=_run_scheduled)
+    start_btn.pack(fill="x", padx=20, pady=(0, 24))
+
+    _sch = getattr(app_root, '_scheduler_state', None)
+    if _sch and _sch.get('running'):
+        status_label.configure(text=_sch.get('status_text', ''), text_color=_sch.get('status_color', '#aaaaaa'))
+        start_btn.configure(text="ОТМЕНА", fg_color="#555555", hover_color="#444444",
+                            command=_cancel_scheduled)
+
+    popup.update_idletasks()
+    pw = app_root._root_frame.winfo_width()
+    ph = app_root._root_frame.winfo_height()
+    ww = popup.winfo_reqwidth()
+    wh = popup.winfo_reqheight()
+    popup.place(x=(pw - ww) // 2, y=(ph - wh) // 2)
+    popup.lift()
+
+    def _on_app_click(e):
+        try:
+            if not popup.winfo_exists(): return
+            if not popup.winfo_ismapped(): return
+
+            if (popup.winfo_rootx() <= e.x_root <= popup.winfo_rootx() + popup.winfo_width() and
+                popup.winfo_rooty() <= e.y_root <= popup.winfo_rooty() + popup.winfo_height()):
+                return
+
+            if (toolbar_btn.winfo_rootx() <= e.x_root <= toolbar_btn.winfo_rootx() + toolbar_btn.winfo_width() and
+                toolbar_btn.winfo_rooty() <= e.y_root <= toolbar_btn.winfo_rooty() + toolbar_btn.winfo_height()):
+                return
+
+            import tkinter as _tk
+            for w in app_root.winfo_children():
+                if isinstance(w, _tk.Toplevel) and w.winfo_ismapped():
+                    if (w.winfo_rootx() <= e.x_root <= w.winfo_rootx() + w.winfo_width() and
+                        w.winfo_rooty() <= e.y_root <= w.winfo_rooty() + w.winfo_height()):
+                        return
+
+            if _cal_popup[0] and _cal_popup[0].winfo_exists() and _cal_popup[0].winfo_ismapped():
+                if (_cal_popup[0].winfo_rootx() <= e.x_root <= _cal_popup[0].winfo_rootx() + _cal_popup[0].winfo_width() and
+                    _cal_popup[0].winfo_rooty() <= e.y_root <= _cal_popup[0].winfo_rooty() + _cal_popup[0].winfo_height()):
+                    return
+
+            _close()
+        except Exception:
+            pass
+
+    _bind_id = app_root.bind("<Button-1>", _on_app_click, add="+")
+    orig_close = _close
+    def _close_and_unbind():
+        try: app_root.unbind("<Button-1>", _bind_id)
+        except Exception: pass
+        orig_close()
+    try:
+        for w in popup.winfo_children():
+            if hasattr(w, 'cget') and w.cget('text') == '✕':
+                w.configure(command=_close_and_unbind)
+                break
+    except Exception: pass
+
+
+def show_help_menu(toolbar_btn, app_root):
+    existing = getattr(app_root, '_help_dropdown', None)
+    if existing:
+        try:
+            existing.place_forget()
+            existing.destroy()
+        except Exception:
+            pass
+        app_root._help_dropdown = None
+        return
+
+    dropdown = ctk.CTkFrame(app_root, fg_color="#2a2a2a", corner_radius=0,
+                             border_width=1, border_color="#555555")
+    app_root._help_dropdown = dropdown
+
+    def _close_dropdown(e=None):
+        try:
+            dropdown.place_forget()
+            dropdown.destroy()
+        except Exception:
+            pass
+        app_root._help_dropdown = None
+
+    def _open_guide():
+        _close_dropdown()
+        guide_path = resource_path("guide.txt")
+        if os.path.exists(guide_path):
+            os.startfile(guide_path)
+        else:
+            open(guide_path, "w", encoding="utf-8").close()
+            os.startfile(guide_path)
+
+    ctk.CTkButton(
+        dropdown, text="Справка",
+        fg_color="transparent", hover_color="#3a3a3a",
+        text_color="white", font=("Segoe UI", 11),
+        anchor="w", height=26, corner_radius=0, width=0,
+        command=_open_guide,
+    ).pack(fill="x", padx=6, pady=(4, 0))
+
+    ctk.CTkButton(
+        dropdown, text="О программе…",
+        fg_color="transparent", hover_color="#3a3a3a",
+        text_color="white", font=("Segoe UI", 11),
+        anchor="w", height=26, corner_radius=0, width=0,
+        command=lambda: [_close_dropdown(), show_about(app_root._root_frame)],
+    ).pack(fill="x", padx=6, pady=(0, 4))
+
+    dropdown.update_idletasks()
+    toolbar_btn.update_idletasks()
+    bx = toolbar_btn.winfo_rootx() - app_root.winfo_rootx()
+    by = toolbar_btn.winfo_rooty() - app_root.winfo_rooty() + toolbar_btn.winfo_height()
+    dropdown.place(x=bx, y=by)
+    dropdown.lift()
+
+    _bind_id = app_root.bind("<Button-1>", lambda e: _close_dropdown() if not (
+        dropdown.winfo_rootx() <= e.x_root <= dropdown.winfo_rootx() + dropdown.winfo_width() and
+        dropdown.winfo_rooty() <= e.y_root <= dropdown.winfo_rooty() + dropdown.winfo_height()
+    ) else None, add="+")
+    orig_close = _close_dropdown
+    def _close_dropdown(e=None):
+        try: app_root.unbind("<Button-1>", _bind_id)
+        except Exception: pass
+        orig_close(e)
+
+def show_extra(toolbar_btn, app_root):
+    existing = getattr(app_root, "_extra_dropdown", None)
+    if existing:
+        try:
+            existing.place_forget()
+            existing.destroy()
+        except Exception:
+            pass
+        app_root._extra_dropdown = None
+        return
+
+    dropdown = ctk.CTkFrame(app_root, fg_color="#2a2a2a", corner_radius=0,
+                             border_width=1, border_color="#555555")
+    app_root._extra_dropdown = dropdown
+
+    def _close_dropdown(e=None):
+        try:
+            dropdown.place_forget()
+            dropdown.destroy()
+        except Exception:
+            pass
+        app_root._extra_dropdown = None
+
+    ctk.CTkButton(
+        dropdown, text="Планировщик",
+        fg_color="transparent", hover_color="#3a3a3a",
+        text_color="white", font=("Segoe UI", 11),
+        anchor="w", height=26, corner_radius=0, width=0,
+        command=lambda: [_close_dropdown(), show_scheduler(toolbar_btn, app_root)],
+    ).pack(fill="x", padx=6, pady=(4, 0))
+
+    ctk.CTkButton(
+        dropdown, text="Настроить прокси",
+        fg_color="transparent", hover_color="#3a3a3a",
+        text_color="white", font=("Segoe UI", 11),
+        anchor="w", height=26, corner_radius=0, width=0,
+        command=lambda: [_close_dropdown(), show_proxy_popup(app_root)],
+    ).pack(fill="x", padx=6, pady=(0, 0))
+
+    ctk.CTkButton(
+        dropdown, text="Обновить компоненты",
+        fg_color="transparent", hover_color="#3a3a3a",
+        text_color="white", font=("Segoe UI", 11),
+        anchor="w", height=26, corner_radius=0, width=0,
+        command=lambda: [_close_dropdown(), show_updater(app_root._root_frame, app_root)],
+    ).pack(fill="x", padx=6, pady=(0, 4))
+
+    dropdown.update_idletasks()
+    toolbar_btn.update_idletasks()
+    bx = toolbar_btn.winfo_rootx() - app_root.winfo_rootx()
+    by = toolbar_btn.winfo_rooty() - app_root.winfo_rooty() + toolbar_btn.winfo_height()
+    dropdown.place(x=bx, y=by)
+    dropdown.lift()
+
+    _bind_id = app_root.bind("<Button-1>", lambda e: _close_dropdown() if not (
+        dropdown.winfo_rootx() <= e.x_root <= dropdown.winfo_rootx() + dropdown.winfo_width() and
+        dropdown.winfo_rooty() <= e.y_root <= dropdown.winfo_rooty() + dropdown.winfo_height()
+    ) else None, add="+")
+    orig_close = _close_dropdown
+    def _close_dropdown(e=None):
+        try: app_root.unbind("<Button-1>", _bind_id)
+        except Exception: pass
+        orig_close(e)
 
 def show_settings(toolbar_btn, app_root):
     import winreg, subprocess
@@ -467,6 +1262,19 @@ def show_settings(toolbar_btn, app_root):
         border_color="#555555",
     ).pack(padx=10, pady=(6, 0), anchor="w")
 
+    log_path = get_log_path()
+    log_exists = os.path.exists(log_path)
+    ctk.CTkButton(
+        dropdown,
+        text="Открыть лог-файл",
+        fg_color="transparent" if log_exists else "#2a2a2a",
+        hover_color="#3a3a3a" if log_exists else "#2a2a2a",
+        text_color="white" if log_exists else "#555555",
+        font=("Segoe UI", 11), anchor="w", height=26, corner_radius=0, width=0,
+        state="normal" if log_exists else "disabled",
+        command=lambda: os.startfile(log_path) if log_exists else None,
+    ).pack(fill="x", padx=6, pady=(0, 0))
+
     history_path = get_history_path()
     history_exists = os.path.exists(history_path)
     ctk.CTkButton(
@@ -475,7 +1283,7 @@ def show_settings(toolbar_btn, app_root):
         fg_color="transparent" if history_exists else "#2a2a2a",
         hover_color="#3a3a3a" if history_exists else "#2a2a2a",
         text_color="white" if history_exists else "#555555",
-        font=("Segoe UI", 11), anchor="w", height=26, corner_radius=0,
+        font=("Segoe UI", 11), anchor="w", height=26, corner_radius=0, width=0,
         state="normal" if history_exists else "disabled",
         command=lambda: os.startfile(history_path) if history_exists else None,
     ).pack(fill="x", padx=6, pady=(0, 0))
@@ -488,9 +1296,14 @@ def show_settings(toolbar_btn, app_root):
         app_root._stop_spinner()
         app_root._gear_btn.configure(state="disabled", text="⚙", fg_color="#444444", hover_color="#444444")
         for cb in (app_root.vcodec_combo, app_root.acodec_combo, app_root.res_combo, app_root.fps_combo):
-            app_root._set_combo_state(cb, "disabled")
-            cb.configure(values=[""])
-            cb.set("")
+            app_root._set_combo_state(cb, "disabled", values=[""])
+            try:
+                if hasattr(cb, "_entry"):
+                    cb._entry.configure(state="normal")
+                    cb._entry.delete(0, "end")
+                    cb._entry.configure(state="disabled")
+            except Exception:
+                pass
         app_root.filesize_label.configure(state="normal")
         app_root.filesize_label.delete(0, "end")
         app_root.filesize_label.configure(state="disabled")
@@ -504,7 +1317,7 @@ def show_settings(toolbar_btn, app_root):
         dropdown, text="Очистить поля",
         fg_color="transparent", hover_color="#3a3a3a",
         text_color="white", font=("Segoe UI", 11),
-        anchor="w", height=26, corner_radius=0,
+        anchor="w", height=26, corner_radius=0, width=0,
         command=_clear_fields,
     ).pack(fill="x", padx=6, pady=(0, 0))
 
@@ -512,7 +1325,7 @@ def show_settings(toolbar_btn, app_root):
         dropdown, text="Выход",
         fg_color="transparent", hover_color="#3a3a3a",
         text_color="#ff4444", font=("Segoe UI", 11),
-        anchor="w", height=26, corner_radius=0,
+        anchor="w", height=26, corner_radius=0, width=0,
         command=app_root.destroy,
     ).pack(fill="x", padx=6, pady=(0, 4))
 
@@ -523,10 +1336,16 @@ def show_settings(toolbar_btn, app_root):
     dropdown.place(x=bx, y=by)
     dropdown.lift()
 
-    app_root.bind("<Button-1>", lambda e: _close_dropdown() if not (
+    _sd_bind = app_root.bind("<Button-1>", lambda e: _close_dropdown() if not (
         dropdown.winfo_rootx() <= e.x_root <= dropdown.winfo_rootx() + dropdown.winfo_width() and
         dropdown.winfo_rooty() <= e.y_root <= dropdown.winfo_rooty() + dropdown.winfo_height()
     ) else None, add="+")
+    orig_close_dropdown = _close_dropdown
+    def _close_dropdown(e=None):
+        try: app_root.unbind("<Button-1>", _sd_bind)
+        except Exception: pass
+        orig_close_dropdown(e)
+
 
 def show_updater(parent, app):
     import urllib.request, shutil
@@ -604,7 +1423,7 @@ def show_updater(parent, app):
     upd_progress.pack(fill="x", pady=(0, 4))
     upd_label = ctk.CTkLabel(progress_frame, text="Ожидание…", text_color="white", font=("Segoe UI", 11))
     upd_label.pack()
-    progress_frame.pack(fill="x", padx=20, pady=(0, 16))
+    progress_frame.pack(fill="x", padx=20, pady=(0, 18))
 
     close_btn = ctk.CTkButton(
         popup, text="✕", width=28, height=18,
@@ -753,6 +1572,7 @@ def show_updater(parent, app):
         popup.lift()
     parent.after(15, _place)
 
+
 class RedStreamApp(ctk.CTk):
     def __init__(self):
         super().__init__()
@@ -781,18 +1601,20 @@ class RedStreamApp(ctk.CTk):
             command=lambda: show_settings(self._settings_btn, self),
         )
         self._settings_btn.pack(side="left")
-        ctk.CTkButton(
-            self._toolbar, text="Обновить компоненты", width=146, height=24,
+        self._extra_btn = ctk.CTkButton(
+            self._toolbar, text="Дополнительно", width=110, height=24,
             fg_color="transparent", hover_color="#2a2a2a", text_color="#aaaaaa",
             font=("Segoe UI", 11), corner_radius=0,
-            command=lambda: show_updater(self._root_frame, self),
-        ).pack(side="left", padx=(0, 0))
-        ctk.CTkButton(
-            self._toolbar, text="О программе…", width=103, height=24,
+            command=lambda: show_extra(self._extra_btn, self),
+        )
+        self._extra_btn.pack(side="left")
+        self._help_btn = ctk.CTkButton(
+            self._toolbar, text="Помощь", width=72, height=24,
             fg_color="transparent", hover_color="#2a2a2a", text_color="#aaaaaa",
             font=("Segoe UI", 11), corner_radius=0,
-            command=lambda: show_about(self._root_frame),
-        ).pack(side="left")
+            command=lambda: show_help_menu(self._help_btn, self),
+        )
+        self._help_btn.pack(side="left")
         ctk.CTkButton(
             self._toolbar, text="Свернуть приложение в трей", width=178, height=24,
             fg_color="transparent", hover_color="#2a2a2a", text_color="#aaaaaa",
@@ -1359,7 +2181,7 @@ class RedStreamApp(ctk.CTk):
                       ).place(relx=1.0, rely=0.0, anchor="ne", x=-1, y=1)
 
         ctk.CTkLabel(popup, text="Настройки скачивания",
-                     text_color="#ff0000", font=("Segoe UI", 13, "bold")).pack(pady=(14, 8), padx=20)
+                     text_color="#ff0000", font=("Segoe UI", 13, "bold")).pack(pady=(16, 8), padx=20)
         ctk.CTkFrame(popup, height=1, fg_color="#444444", corner_radius=0).pack(fill="x", padx=20, pady=(0, 10))
 
         import urllib.request as _ureq
@@ -1403,20 +2225,20 @@ class RedStreamApp(ctk.CTk):
 
         def _make_timecode_widget(parent):
             frame = ctk.CTkFrame(parent, fg_color="#333333", border_color="#555555",
-                                 border_width=2, corner_radius=6)
+                                 border_width=2, corner_radius=6, width=120)
             fields = []
             maxlens = [2, 2, 2]
             for i, (ml, ph) in enumerate(zip(maxlens, ["ЧЧ", "ММ", "СС"])):
                 var = ctk.StringVar()
-                e = ctk.CTkEntry(frame, textvariable=var, width=28, fg_color="transparent",
+                e = ctk.CTkEntry(frame, textvariable=var, width=28, height=24, fg_color="transparent",
                                  border_width=0, text_color="white", font=("Segoe UI", 11),
                                  justify="center", placeholder_text=ph,
                                  placeholder_text_color="#555555")
-                e.pack(side="left", padx=(4 if i == 0 else 0, 0))
+                e.pack(side="left", padx=(4 if i == 0 else 0, 4 if i == 2 else 0), pady=2)
                 fields.append((e, var, ml))
                 if i < 2:
                     ctk.CTkLabel(frame, text=":", text_color="#aaaaaa",
-                                 font=("Segoe UI", 11), width=8).pack(side="left")
+                                 font=("Segoe UI", 11), width=8, height=24).pack(side="left", pady=2)
 
             def _validate(idx, sv, ml):
                 v = sv.get()
@@ -1487,14 +2309,14 @@ class RedStreamApp(ctk.CTk):
                       text_color="#aaaaaa", font=("Segoe UI", 10),
                       anchor="center", height=22, corner_radius=0,
                       command=_reset_trim,
-                      ).pack(pady=(0, 14))
+                      ).pack(pady=(0, 19))
 
         popup.update_idletasks()
         pw = self._root_frame.winfo_width()
         ph = self._root_frame.winfo_height()
         ww = popup.winfo_reqwidth()
         wh = popup.winfo_reqheight()
-        popup.place(x=(pw - ww) // 2, y=(ph - wh) // 2)
+        popup.place(x=(pw - ww) // 2, y=(ph - wh) // 2 - 79)
         popup.lift()
 
     def _section(self, parent):
@@ -1523,7 +2345,7 @@ class RedStreamApp(ctk.CTk):
                 tw.overrideredirect(True)
                 tw.configure(fg_color="#3a3a3a")
                 ctk.CTkLabel(tw, text=text, text_color="white", font=("Segoe UI", 10),
-                             fg_color="#3a3a3a", justify="center", corner_radius=4).pack(padx=6, pady=4)
+                             fg_color="#3a3a3a", justify="center", corner_radius=6).pack(padx=6, pady=4)
                 tw.update_idletasks()
                 tw.geometry(f"+{x - tw.winfo_width()//2}+{y}")
                 tw.lift()
@@ -1563,6 +2385,8 @@ class RedStreamApp(ctk.CTk):
 
     def _on_history_select(self, url):
         if url and url.startswith("http"):
+            try: self._ph_hide()
+            except Exception: pass
             self._gear_btn.configure(state="disabled", text="⚙", fg_color="#444444", hover_color="#444444")
             self._preview_data = None
             self._start_spinner()
@@ -1604,6 +2428,7 @@ class RedStreamApp(ctk.CTk):
             except Exception: pass
         try: self._gear_btn.configure(text="⚙")
         except Exception: pass
+
 
     def _fetch_preview(self, url):
         def _worker():
@@ -1685,7 +2510,7 @@ class RedStreamApp(ctk.CTk):
                 fps_list = [str(x) for x in sorted(list(fps_set), reverse=True)] if fps_set else ["-"]
 
                 self.after(0, lambda: self._update_format_combos(ext_list, vcodecs_list, acodecs_list, resolutions_list, fps_list))
-
+                
                 self.after(0, self._stop_spinner)
                 self.after(0, lambda: self._gear_btn.configure(state="normal", text="⚙", fg_color="#555555", hover_color="#666666"))
             except Exception:
@@ -2007,7 +2832,6 @@ class RedStreamApp(ctk.CTk):
         os.makedirs(self._dest_folder, exist_ok=True)
         dest  = os.path.join(self._dest_folder, "%(title)s.%(ext)s")
         ytdlp = resource_path("yt-dlp.exe")
-        # Обрезка видео
         trim_opts = []
         trim_start = getattr(self, "_trim_start", None)
         trim_end   = getattr(self, "_trim_end", None)
@@ -2018,7 +2842,9 @@ class RedStreamApp(ctk.CTk):
             trim_opts = ["--download-sections", section,
                          "--force-keyframes-at-cuts"]
 
-        cmd   = [ytdlp, "--newline", "--no-colors"] + cookie_opt + fmt_opts + trim_opts + ["-o", dest, url]
+        proxy_url = get_proxy_url()
+        proxy_opt = ["--proxy", proxy_url] if proxy_url else []
+        cmd   = [ytdlp, "--newline", "--no-colors", "--encoding", "utf-8"] + cookie_opt + proxy_opt + fmt_opts + trim_opts + ["-o", dest, url]
 
         for f in (self._log_file, self._done_file):
             try: os.remove(f)
@@ -2030,10 +2856,18 @@ class RedStreamApp(ctk.CTk):
 
         def run():
             with open(self._log_file, "w", encoding="utf-8") as log:
+                with open(get_log_path(), "a", encoding="utf-8") as perm_log:
+                    perm_log.write(f"\n[{__import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M:%S")}] {url}\n")
                 proc = subprocess.Popen(cmd, stdout=log, stderr=log, creationflags=subprocess.CREATE_NO_WINDOW)
                 self._process = proc
                 proc.wait()
             with open(self._done_file, "w") as f: f.write("DONE")
+            try:
+                with open(self._log_file, "r", encoding="utf-8", errors="replace") as lf:
+                    log_content = lf.read()
+                with open(get_log_path(), "a", encoding="utf-8") as perm_log:
+                    perm_log.write(log_content + "\n")
+            except Exception: pass
 
         threading.Thread(target=run, daemon=True).start()
         self._timer_id = self.after(500, self._check_progress)
