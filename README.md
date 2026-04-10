@@ -7,7 +7,7 @@
 
 ---
 
-[!(https://github.com/user-attachments/assets/d5f0bbcf-3a24-41b9-ac8c-4fc2d0b697e9)](https://github.com/frostbittenbull/RedStream/releases/download/2.2/RedStream_2.2_Setup_x64.exe)
+[![Скачать](https://github.com/user-attachments/assets/31ea9ce3-b604-4548-91cf-1bf98d2bdd93)](https://github.com/frostbittenbull/RedStream/releases/download/2.2/RedStream_2.2_Setup_x64.exe)
 
 ---
 
