@@ -5,13 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RedStream — Video Downloader</title>
     <meta name="description" content="Простой и удобный загрузчик видео с популярных сайтов: YouTube, Instagram, TikTok.">
-    
-    <!-- Подключение шрифтов -->
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
-    
-    <!-- Иконки FontAwesome -->
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
@@ -24,6 +22,11 @@
             --text-main: #ffffff;
             --text-muted: #a1a1aa;
             --border-color: #2d2d30;
+        }
+
+        /* Плавный скролл всей страницы */
+        html {
+            scroll-behavior: smooth;
         }
 
         * {
@@ -60,11 +63,17 @@
             padding: 0 20px;
         }
 
-        /* Hero Section */
+        /* --- ОБНОВЛЕННЫЙ БЛОК HERO (Титульная страница) --- */
         .hero {
+            min-height: 100vh; /* Занимает 100% высоты экрана */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
             text-align: center;
-            padding: 80px 0 60px;
-            background: radial-gradient(circle at 50% -20%, rgba(229, 9, 20, 0.15), transparent 60%);
+            background: radial-gradient(circle at 50% 50%, rgba(229, 9, 20, 0.15), transparent 70%);
+            position: relative; /* Для позиционирования стрелочки */
+            padding: 20px;
         }
 
         .hero h1 {
@@ -112,11 +121,12 @@
         }
 
         .hero-image {
-            margin-top: 60px;
+            margin-bottom: 40px;
             max-width: 100%;
-            border-radius: 16px;
+            max-height: 50vh; /* Ограничиваем высоту, чтобы влезало на экраны ноутов */
+            object-fit: contain;
+            border-radius: 75px; /* Немного уменьшил радиус для гармонии с экраном */
             box-shadow: 0 20px 40px rgba(0,0,0,0.5);
-            border: 1px solid var(--border-color);
             transition: transform 0.3s ease;
         }
 
@@ -124,7 +134,43 @@
             transform: scale(1.02);
         }
 
-        /* Section Titles */
+        /* Анимация прыгающей стрелочки */
+        .scroll-indicator {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: var(--text-muted);
+            font-size: 2rem;
+            animation: bounce 2s infinite;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .scroll-indicator:hover {
+            color: var(--primary-color);
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0) translateX(-50%); }
+            40% { transform: translateY(-15px) translateX(-50%); }
+            60% { transform: translateY(-7px) translateX(-50%); }
+        }
+        /* -------------------------------------------------- */
+
+        .screen-image {
+            margin-top: 60px;
+            max-width: 100%;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border-color);
+            transition: transform 0.3s ease;
+        }
+
+        .screen-image:hover {
+            transform: scale(1.02);
+        }
+
         .section-title {
             font-size: 2.5rem;
             text-align: center;
@@ -140,7 +186,6 @@
             border-top: 1px solid var(--border-color);
         }
 
-        /* Features Grid */
         .features-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -177,7 +222,6 @@
             font-size: 0.95rem;
         }
 
-        /* Installation Section */
         .install-box {
             background-color: var(--surface-color);
             border-radius: 16px;
@@ -208,7 +252,6 @@
             color: var(--text-muted);
         }
 
-        /* Info Blocks (Guides) */
         .info-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
@@ -239,7 +282,6 @@
             padding-left: 20px;
         }
 
-        /* Tech Stack */
         .tech-stack {
             display: flex;
             flex-wrap: wrap;
@@ -263,7 +305,6 @@
             background-color: rgba(229, 9, 20, 0.05);
         }
 
-        /* Footer */
         footer {
             text-align: center;
             padding: 40px 0;
@@ -271,34 +312,46 @@
             color: var(--text-muted);
         }
 
-        /* Responsive */
         @media (max-width: 768px) {
             .hero h1 { font-size: 2.5rem; }
             .section-title { font-size: 2rem; }
             .info-grid { grid-template-columns: 1fr; }
         }
+
+        /* Классы для анимации появления при скролле */
+        .reveal {
+            opacity: 0;
+            transform: translateY(50px);
+            transition: all 0.8s ease-out;
+        }
+
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
     </style>
 </head>
 <body>
 
-    <!-- Hero Section -->
+    <!-- Титульная страница (Занимает весь экран) -->
     <div class="hero">
         <div class="container">
+            <img src="Logotype.png" alt="RedStream Preview" class="hero-image" onerror="this.src='https://via.placeholder.com/1000x560/1a1a1d/ffffff?text=Logotype.png'">
             <h1><span>Red</span>Stream</h1>
             <p>Простой и удобный десктопный загрузчик видео с минималистичным интерфейсом для YouTube, Instagram, TikTok и сотен других платформ.</p>
-            
             <a href="https://github.com/frostbittenbull/RedStream/releases/download/2.2/RedStream_2.2_Setup_x64.exe" class="btn-download">
                 <i class="fa-brands fa-windows"></i> Скачать для Windows (x64)
             </a>
-            
-            <br>
-            <!-- Главный скриншот (убедись, что файл Preview.png лежит рядом) -->
-            <img src="Preview.png" alt="RedStream Preview" class="hero-image" onerror="this.src='https://via.placeholder.com/1000x560/1a1a1d/ffffff?text=Preview.png'">
         </div>
+        
+        <!-- Прыгающая стрелочка вниз -->
+        <a href="#features" class="scroll-indicator">
+            <i class="fa-solid fa-chevron-down"></i>
+        </a>
     </div>
 
-    <!-- Features Section -->
-    <section id="features">
+    <!-- Контент ниже будет плавно появляться при скролле (класс reveal) -->
+    <section id="features" class="reveal">
         <div class="container">
             <h2 class="section-title">✨ Возможности</h2>
             <div class="features-grid">
@@ -336,8 +389,7 @@
         </div>
     </section>
 
-    <!-- Installation Section -->
-    <section id="installation">
+    <section id="installation" class="reveal">
         <div class="container">
             <h2 class="section-title">⚙️ Установка</h2>
             
@@ -350,7 +402,7 @@
             <div class="install-box">
                 <h3>Вариант 2 — Из исходников</h3>
                 <p>Выполните следующие команды в терминале:</p>
-<pre>git clone https://github.com/frostbittenbull/RedStream.git
+                <pre>git clone https://github.com/frostbittenbull/RedStream.git
 cd RedStream
 curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe -o yt-dlp.exe
 curl -L https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-essentials.7z -o ffmpeg.7z
@@ -365,17 +417,14 @@ python redstream.py</pre>
         </div>
     </section>
 
-    <!-- Screenshot Section -->
-    <section id="screenshot" style="background-color: var(--surface-color);">
+    <section id="screenshot" style="background-color: var(--surface-color);" class="reveal">
         <div class="container text-center">
             <h2 class="section-title">🖼️ Интерфейс</h2>
-            <!-- Второй скриншот -->
-            <img src="Screenshot.png" alt="RedStream Screenshot" class="hero-image" style="margin-top: 0;" onerror="this.src='https://via.placeholder.com/1000x600/0f0f11/ffffff?text=Screenshot.png'">
+            <img src="Screenshot.png" alt="RedStream Screenshot" class="screen-image" style="margin-top: 0;" onerror="this.src='https://via.placeholder.com/1000x600/0f0f11/ffffff?text=Screenshot.png'">
         </div>
     </section>
 
-    <!-- Guides Section -->
-    <section id="guides">
+    <section id="guides" class="reveal">
         <div class="container">
             <h2 class="section-title">📖 Как пользоваться</h2>
             
@@ -410,8 +459,7 @@ python redstream.py</pre>
         </div>
     </section>
 
-    <!-- Tech Stack Section -->
-    <section id="tech-stack">
+    <section id="tech-stack" class="reveal">
         <div class="container">
             <h2 class="section-title">🛠️ Стек технологий</h2>
             <div class="tech-stack">
@@ -428,8 +476,7 @@ python redstream.py</pre>
         </div>
     </section>
 
-    <!-- Footer -->
-    <footer>
+    <footer class="reveal">
         <div class="container">
             <p>Создано с ❤️ на Python. Проект с открытым исходным кодом.</p>
             <p style="margin-top: 10px;">
@@ -439,6 +486,26 @@ python redstream.py</pre>
             </p>
         </div>
     </footer>
+
+    <!-- Скрипт для плавного появления блоков при скролле -->
+    <script>
+        function reveal() {
+            var reveals = document.querySelectorAll(".reveal");
+            for (var i = 0; i < reveals.length; i++) {
+                var windowHeight = window.innerHeight;
+                var elementTop = reveals[i].getBoundingClientRect().top;
+                var elementVisible = 100; // Насколько пикселей блок должен показаться, чтобы началась анимация
+
+                if (elementTop < windowHeight - elementVisible) {
+                    reveals[i].classList.add("active");
+                }
+            }
+        }
+        // Проверяем при скролле
+        window.addEventListener("scroll", reveal);
+        // Проверяем сразу при загрузке (если пользователь обновил страницу на середине)
+        reveal();
+    </script>
 
 </body>
 </html>
