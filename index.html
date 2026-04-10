@@ -10,7 +10,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
-
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
@@ -25,15 +24,9 @@
             --border-color: #2d2d30;
         }
 
-        html {
-            scroll-behavior: smooth;
-        }
+        html { scroll-behavior: smooth; }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             font-family: 'Inter', sans-serif;
@@ -43,19 +36,14 @@
             overflow-x: hidden;
         }
 
-        h1, h2, h3 {
-            font-family: 'Poppins', sans-serif;
-        }
+        h1, h2, h3 { font-family: 'Poppins', sans-serif; }
 
         a {
             color: var(--primary-color);
             text-decoration: none;
             transition: color 0.3s;
         }
-
-        a:hover {
-            color: var(--primary-hover);
-        }
+        a:hover { color: var(--primary-hover); }
 
         .container {
             max-width: 1200px;
@@ -129,9 +117,7 @@
             transition: transform 0.3s ease;
         }
 
-        .hero-image:hover {
-            transform: scale(1.02);
-        }
+        .hero-image:hover { transform: scale(1.02); }
 
         .scroll-indicator {
             position: absolute;
@@ -145,9 +131,7 @@
             transition: color 0.3s;
         }
 
-        .scroll-indicator:hover {
-            color: var(--primary-color);
-        }
+        .scroll-indicator:hover { color: var(--primary-color); }
 
         @keyframes bounce {
             0%, 20%, 50%, 80%, 100% { transform: translateY(0) translateX(-50%); }
@@ -155,17 +139,9 @@
             60% { transform: translateY(-7px) translateX(-50%); }
         }
 
-        .screen-image {
-            margin-top: 60px;
-            max-width: 100%;
-            border-radius: 16px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
-            border: 1px solid var(--border-color);
-            transition: transform 0.3s ease;
-        }
-
-        .screen-image:hover {
-            transform: scale(1.02);
+        section {
+            padding: 80px 0;
+            border-top: 1px solid var(--border-color);
         }
 
         .section-title {
@@ -178,14 +154,19 @@
             gap: 15px;
         }
 
-        section {
-            padding: 80px 0;
-            border-top: 1px solid var(--border-color);
+        .screen-image {
+            max-width: 100%;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border-color);
+            transition: transform 0.3s ease;
         }
+
+        .screen-image:hover { transform: scale(1.02); }
 
         .features-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 20px;
         }
 
@@ -207,6 +188,7 @@
             font-size: 2rem;
             color: var(--primary-color);
             margin-bottom: 20px;
+            display: block;
         }
 
         .feature-card h3 {
@@ -239,8 +221,19 @@
             overflow-x: auto;
             color: #00ff00;
             font-family: monospace;
+            font-size: 0.9rem;
             margin: 15px 0;
             border: 1px solid #333;
+            white-space: pre;
+        }
+
+        code {
+            background: rgba(229, 9, 20, 0.12);
+            color: #ff6b6b;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9em;
         }
 
         .dependencies {
@@ -251,7 +244,7 @@
 
         .info-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
             gap: 30px;
         }
 
@@ -274,9 +267,16 @@
             color: var(--text-muted);
             margin-bottom: 10px;
         }
-        
-        .info-block ol {
+
+        .info-block ol, .info-block ul {
             padding-left: 20px;
+        }
+
+        .info-block li { margin-bottom: 4px; }
+
+        .warn {
+            color: #ffaa00 !important;
+            margin-top: 10px;
         }
 
         .tech-stack {
@@ -309,12 +309,6 @@
             color: var(--text-muted);
         }
 
-        @media (max-width: 768px) {
-            .hero h1 { font-size: 2.5rem; }
-            .section-title { font-size: 2rem; }
-            .info-grid { grid-template-columns: 1fr; }
-        }
-
         .reveal {
             opacity: 0;
             transform: translateY(50px);
@@ -325,20 +319,26 @@
             opacity: 1;
             transform: translateY(0);
         }
+
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2.5rem; }
+            .section-title { font-size: 2rem; }
+            .info-grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
 
     <div class="hero">
         <div class="container">
-            <img src="Logotype.png" alt="RedStream Preview" class="hero-image" onerror="this.src='https://via.placeholder.com/1000x560/1a1a1d/ffffff?text=Logotype.png'">
+            <img src="Logotype.png" alt="RedStream Logo" class="hero-image"
+                 onerror="this.src='https://via.placeholder.com/300x300/1a1a1d/e50914?text=RS'">
             <h1><span>Red</span>Stream</h1>
             <p>Простой и удобный десктопный загрузчик видео с минималистичным интерфейсом для YouTube, Instagram, TikTok и сотен других платформ.</p>
             <a href="https://github.com/frostbittenbull/RedStream/releases/download/2.2/RedStream_2.2_Setup_x64.exe" class="btn-download">
                 <i class="fa-brands fa-windows"></i> Скачать для Windows (x64)
             </a>
         </div>
-
         <a href="#features" class="scroll-indicator">
             <i class="fa-solid fa-chevron-down"></i>
         </a>
@@ -346,48 +346,99 @@
 
     <section id="features" class="reveal">
         <div class="container">
-            <h2 class="section-title">✨ Возможности</h2>
+            <h2 class="section-title">Возможности</h2>
             <div class="features-grid">
+
                 <div class="feature-card">
                     <i class="fa-solid fa-photo-film"></i>
-                    <h3>Универсальность форматов</h3>
-                    <p>Скачивание видео (MKV, MP4) и аудио (OPUS, M4A, MP3). Поддержка YouTube, Instagram, TikTok и сотен других сайтов.</p>
+                    <h3>Форматы видео и аудио</h3>
+                    <p>Скачивание видео в <strong>MKV</strong> и <strong>MP4</strong>, аудио в <strong>OPUS</strong>, <strong>M4A</strong> и <strong>MP3</strong>. Поддержка YouTube, Instagram, TikTok и <a href="https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md" target="_blank">сотен других сайтов</a>.</p>
                 </div>
+
                 <div class="feature-card">
                     <i class="fa-solid fa-sliders"></i>
-                    <h3>Гибкие настройки</h3>
-                    <p>Динамический выбор разрешения, FPS и кодеков (AV1, VP9, H.264). Умный подбор лучшей альтернативы.</p>
+                    <h3>Гибкие настройки качества</h3>
+                    <p>Динамический выбор разрешения, кодека (<strong>AV1</strong>, <strong>VP9</strong>, <strong>H.264</strong>) и FPS на основе реальных форматов видео. Умный подбор AV1 с автоматическим фолбэком.</p>
                 </div>
+
+                <div class="feature-card">
+                    <i class="fa-solid fa-eye"></i>
+                    <h3>Предпросмотр видео</h3>
+                    <p>Перед скачиванием программа показывает превью, название и длительность видео — чтобы вы точно знали, что загружаете.</p>
+                </div>
+
                 <div class="feature-card">
                     <i class="fa-solid fa-scissors"></i>
                     <h3>Обрезка на лету</h3>
-                    <p>Обрезка видео по точным таймкодам прямо во время скачивания. Не нужно скачивать файл целиком!</p>
+                    <p>Обрезка видео по точным таймкодам прямо во время скачивания. Не нужно загружать файл целиком — только нужный фрагмент.</p>
                 </div>
+
+                <div class="feature-card">
+                    <i class="fa-solid fa-bars-progress"></i>
+                    <h3>Детальный прогрессбар</h3>
+                    <p>Отображение процента, размера файла, типа потока (видео/аудио) и скорости загрузки. Прогресс также виден в <strong>заголовке окна</strong>.</p>
+                </div>
+
+                <div class="feature-card">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <h3>История загрузок</h3>
+                    <p>Приложение сохраняет историю скачанных ссылок — легко найдёте нужное видео и повторите загрузку в другом формате.</p>
+                </div>
+
                 <div class="feature-card">
                     <i class="fa-solid fa-clock"></i>
-                    <h3>Планировщик</h3>
-                    <p>Запланируйте скачивание на конкретную дату и время. Работает в фоне даже при закрытом окне интерфейса.</p>
+                    <h3>Планировщик загрузок</h3>
+                    <p>Запланируйте скачивание на конкретную дату и время через встроенный календарь. Работает в фоне даже при закрытом окне интерфейса.</p>
                 </div>
+
                 <div class="feature-card">
-                    <i class="fa-solid fa-shield-halved"></i>
-                    <h3>Прокси и Авторизация</h3>
-                    <p>Поддержка HTTP/SOCKS прокси с авторизацией и обход возрастных ограничений через локальный браузер.</p>
+                    <i class="fa-solid fa-bell"></i>
+                    <h3>Уведомления Windows</h3>
+                    <p>По завершении загрузки приложение отправляет системное уведомление Windows — вы не пропустите готовый файл.</p>
                 </div>
+
+                <div class="feature-card">
+                    <i class="fa-solid fa-minimize"></i>
+                    <h3>Системный трей</h3>
+                    <p>Сворачивание в системный трей для ненавязчивой работы в фоне. Настройка автозапуска при старте Windows прямо в интерфейсе.</p>
+                </div>
+
+                <div class="feature-card">
+                    <i class="fa-solid fa-globe"></i>
+                    <h3>Поддержка прокси</h3>
+                    <p>Протоколы <strong>HTTP</strong>, <strong>SOCKS4</strong> и <strong>SOCKS5</strong> с авторизацией по логину и паролю. Настройка через <em>Дополнительно → Настроить прокси</em>.</p>
+                </div>
+
+                <div class="feature-card">
+                    <i class="fa-solid fa-user-lock"></i>
+                    <h3>Авторизация через браузер</h3>
+                    <p>Скачивание видео с возрастными ограничениями (18+) с использованием куки вашего браузера. Просто выберите браузер в списке.</p>
+                </div>
+
                 <div class="feature-card">
                     <i class="fa-solid fa-rotate"></i>
-                    <h3>Автообновление</h3>
-                    <p>Автоматическая проверка и обновление самой программы, yt-dlp и ffmpeg при запуске приложения.</p>
+                    <h3>Автообновление компонентов</h3>
+                    <p>При каждом запуске RedStream автоматически проверяет обновления для самой программы, <strong>yt-dlp</strong> и <strong>ffmpeg</strong>. Обновление — одной кнопкой внутри приложения.</p>
                 </div>
+
             </div>
+        </div>
+    </section>
+
+    <section id="screenshot" style="background-color: var(--surface-color);" class="reveal">
+        <div class="container" style="text-align:center;">
+            <h2 class="section-title">🖼️ Интерфейс</h2>
+            <img src="Screenshot.png" alt="RedStream Screenshot" class="screen-image"
+                 onerror="this.src='https://via.placeholder.com/1000x600/0f0f11/ffffff?text=Screenshot.png'">
         </div>
     </section>
 
     <section id="installation" class="reveal">
         <div class="container">
-            <h2 class="section-title">⚙️ Установка</h2>
-            
+            <h2 class="section-title">Установка</h2>
+
             <div class="install-box">
-                <h3>Вариант 1 — Готовый установщик (Рекомендуется)</h3>
+                <h3>Вариант 1 — Готовый установщик (рекомендуется)</h3>
                 <p>1. Скачайте последний релиз из раздела <a href="https://github.com/frostbittenbull/RedStream/releases" target="_blank">Releases</a>.<br>
                    2. Запустите <code>RedStream_Setup_x64.exe</code> и следуйте инструкциям на экране.</p>
             </div>
@@ -410,51 +461,60 @@
         </div>
     </section>
 
-    <section id="screenshot" style="background-color: var(--surface-color);" class="reveal">
-        <div class="container text-center">
-            <h2 class="section-title">🖼️ Интерфейс</h2>
-            <img src="Screenshot.png" alt="RedStream Screenshot" class="screen-image" style="margin-top: 0;" onerror="this.src='https://via.placeholder.com/1000x600/0f0f11/ffffff?text=Screenshot.png'">
-        </div>
-    </section>
-
     <section id="guides" class="reveal">
         <div class="container">
-            <h2 class="section-title">📖 Как пользоваться</h2>
-            
+            <h2 class="section-title">Как пользоваться</h2>
+
             <div class="info-grid">
+
                 <div class="info-block">
                     <h3><i class="fa-solid fa-folder-open"></i> Куда сохраняются файлы</h3>
-                    <p>Все загруженные файлы сохраняются в папку <code>RedStream Downloader</code> внутри вашей стандартной папки «Загрузки». Вы можете легко изменить этот путь прямо в интерфейсе программы.</p>
+                    <p>Все загруженные файлы сохраняются в папку <code>RedStream Downloader</code> внутри вашей стандартной папки «Загрузки». Путь можно изменить прямо в интерфейсе программы.</p>
                 </div>
 
                 <div class="info-block">
                     <h3><i class="fa-solid fa-scissors"></i> Обрезка видео</h3>
-                    <p>Нажмите кнопку ⚙ рядом с полем ввода ссылки. В открывшемся окне укажите таймкоды «Начало» и «Конец» в формате <code>ЧЧ:ММ:СС</code>. Если поля оставить пустыми — видео скачается целиком.</p>
+                    <p>Нажмите кнопку <strong>⚙</strong> рядом с полем ввода ссылки. В открывшемся окне укажите таймкоды «Начало» и «Конец» в формате <code>ЧЧ:ММ:СС</code>.</p>
+                    <p>Если поля оставить пустыми — видео скачается целиком.</p>
                 </div>
 
                 <div class="info-block">
                     <h3><i class="fa-regular fa-calendar-check"></i> Планировщик загрузок</h3>
                     <p>Нажмите <strong>Дополнительно → Планировщик</strong>:</p>
                     <ol>
-                        <li>Укажите дату и время запуска.</li>
-                        <li>Добавьте ссылку, выберите формат и качество.</li>
+                        <li>Укажите дату и время — вручную или через встроенный календарь.</li>
+                        <li>Добавьте одну или несколько ссылок.</li>
+                        <li>Выберите формат, кодек и разрешение.</li>
                         <li>Нажмите <strong>ЗАПЛАНИРОВАТЬ</strong>.</li>
                     </ol>
-                    <p><small><em>* Таймер работает в фоне, окно можно закрыть.</em></small></p>
+                    <p>Таймер работает в фоне — окно можно закрыть. Статус восстанавливается при повторном открытии. Для отмены нажмите <strong>ОТМЕНА</strong>.</p>
                 </div>
 
                 <div class="info-block">
                     <h3><i class="fa-solid fa-user-lock"></i> Авторизация через браузер</h3>
-                    <p>Для видео с возрастными ограничениями (18+) выберите ваш браузер в выпадающем списке. Программа использует ваши куки для доступа.</p>
-                    <p style="color: #ffaa00;">⚠️ <strong>Перед скачиванием браузер должен быть закрыт.</strong></p>
+                    <p>Для видео с возрастными ограничениями выберите ваш браузер в выпадающем списке. Программа использует сохранённые куки для доступа к контенту.</p>
+                    <p class="warn">⚠️ <strong>Перед скачиванием браузер должен быть закрыт.</strong></p>
+                    <p>Если видео без ограничений — выберите «Без авторизации».</p>
                 </div>
+
+                <div class="info-block">
+                    <h3><i class="fa-solid fa-globe"></i> Настройка прокси</h3>
+                    <p>Откройте <strong>Дополнительно → Настроить прокси</strong>. Поддерживаются протоколы <strong>HTTP</strong>, <strong>SOCKS4</strong> и <strong>SOCKS5</strong>, а также авторизация по логину и паролю.</p>
+                </div>
+
+                <div class="info-block">
+                    <h3><i class="fa-solid fa-rotate"></i> Обновление компонентов</h3>
+                    <p>При каждом запуске RedStream автоматически проверяет обновления программы, yt-dlp и ffmpeg. При наличии обновления появится цветной баннер с кнопкой.</p>
+                    <p>Обновить вручную: <strong>Дополнительно → Обновить компоненты</strong>.</p>
+                </div>
+
             </div>
         </div>
     </section>
 
     <section id="tech-stack" class="reveal">
         <div class="container">
-            <h2 class="section-title">🛠️ Стек технологий</h2>
+            <h2 class="section-title">Стек технологий</h2>
             <div class="tech-stack">
                 <a href="https://www.python.org/" target="_blank" class="tech-tag">Python 3.x</a>
                 <a href="https://github.com/yt-dlp/yt-dlp" target="_blank" class="tech-tag">yt-dlp</a>
@@ -482,14 +542,12 @@
 
     <script>
         function reveal() {
-            var reveals = document.querySelectorAll(".reveal");
-            for (var i = 0; i < reveals.length; i++) {
-                var windowHeight = window.innerHeight;
-                var elementTop = reveals[i].getBoundingClientRect().top;
-                var elementVisible = 100;
-
-                if (elementTop < windowHeight - elementVisible) {
-                    reveals[i].classList.add("active");
+            const reveals = document.querySelectorAll(".reveal");
+            for (const el of reveals) {
+                const windowHeight = window.innerHeight;
+                const elementTop = el.getBoundingClientRect().top;
+                if (elementTop < windowHeight - 100) {
+                    el.classList.add("active");
                 }
             }
         }
