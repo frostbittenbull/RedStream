@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RedStream — Video Downloader</title>
+    <meta name="description" content="Простой и удобный загрузчик видео с популярных сайтов: YouTube, Instagram, TikTok.">
+    
+    <!-- Подключение шрифтов -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Иконки FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --bg-color: #0f0f11;
+            --surface-color: #1a1a1d;
+            --surface-hover: #26262a;
+            --primary-color: #e50914;
+            --primary-hover: #f40612;
+            --text-main: #ffffff;
+            --text-muted: #a1a1aa;
+            --border-color: #2d2d30;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3 {
+            font-family: 'Poppins', sans-serif;
+        }
+
+        a {
+            color: var(--primary-color);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        a:hover {
+            color: var(--primary-hover);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Hero Section */
+        .hero {
+            text-align: center;
+            padding: 80px 0 60px;
+            background: radial-gradient(circle at 50% -20%, rgba(229, 9, 20, 0.15), transparent 60%);
+        }
+
+        .hero h1 {
+            font-size: 4rem;
+            font-weight: 800;
+            margin-bottom: 20px;
+            letter-spacing: -1px;
+            background: linear-gradient(135deg, #fff, #a1a1aa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero h1 span {
+            color: var(--primary-color);
+            -webkit-text-fill-color: var(--primary-color);
+        }
+
+        .hero p {
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            max-width: 700px;
+            margin: 0 auto 40px;
+        }
+
+        .btn-download {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background-color: var(--primary-color);
+            color: #fff;
+            padding: 16px 32px;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 20px rgba(229, 9, 20, 0.3);
+        }
+
+        .btn-download:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-3px);
+            box-shadow: 0 15px 25px rgba(229, 9, 20, 0.4);
+            color: #fff;
+        }
+
+        .hero-image {
+            margin-top: 60px;
+            max-width: 100%;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            border: 1px solid var(--border-color);
+            transition: transform 0.3s ease;
+        }
+
+        .hero-image:hover {
+            transform: scale(1.02);
+        }
+
+        /* Section Titles */
+        .section-title {
+            font-size: 2.5rem;
+            text-align: center;
+            margin-bottom: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        section {
+            padding: 80px 0;
+            border-top: 1px solid var(--border-color);
+        }
+
+        /* Features Grid */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .feature-card {
+            background-color: var(--surface-color);
+            padding: 30px;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            background-color: var(--surface-hover);
+            transform: translateY(-5px);
+            border-color: var(--primary-color);
+        }
+
+        .feature-card i {
+            font-size: 2rem;
+            color: var(--primary-color);
+            margin-bottom: 20px;
+        }
+
+        .feature-card h3 {
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+        }
+
+        .feature-card p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        /* Installation Section */
+        .install-box {
+            background-color: var(--surface-color);
+            border-radius: 16px;
+            padding: 40px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+
+        .install-box h3 {
+            margin-bottom: 15px;
+            color: var(--text-main);
+        }
+
+        pre {
+            background-color: #000;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            color: #00ff00;
+            font-family: monospace;
+            margin: 15px 0;
+            border: 1px solid #333;
+        }
+
+        .dependencies {
+            margin-top: 20px;
+            padding-left: 20px;
+            color: var(--text-muted);
+        }
+
+        /* Info Blocks (Guides) */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+        }
+
+        .info-block {
+            background: linear-gradient(145deg, var(--surface-color), #141416);
+            padding: 30px;
+            border-radius: 16px;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .info-block h3 {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        .info-block p, .info-block ul, .info-block ol {
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+        
+        .info-block ol {
+            padding-left: 20px;
+        }
+
+        /* Tech Stack */
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .tech-tag {
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-weight: 500;
+            color: var(--text-main);
+            transition: all 0.3s;
+        }
+
+        .tech-tag:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+            background-color: rgba(229, 9, 20, 0.05);
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 40px 0;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-muted);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2.5rem; }
+            .section-title { font-size: 2rem; }
+            .info-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Hero Section -->
+    <div class="hero">
+        <div class="container">
+            <h1><span>Red</span>Stream</h1>
+            <p>Простой и удобный десктопный загрузчик видео с минималистичным интерфейсом для YouTube, Instagram, TikTok и сотен других платформ.</p>
+            
+            <a href="https://github.com/frostbittenbull/RedStream/releases/download/2.2/RedStream_2.2_Setup_x64.exe" class="btn-download">
+                <i class="fa-brands fa-windows"></i> Скачать для Windows (x64)
+            </a>
+            
+            <br>
+            <!-- Главный скриншот (убедись, что файл Preview.png лежит рядом) -->
+            <img src="Preview.png" alt="RedStream Preview" class="hero-image" onerror="this.src='https://via.placeholder.com/1000x560/1a1a1d/ffffff?text=Preview.png'">
+        </div>
+    </div>
+
+    <!-- Features Section -->
+    <section id="features">
+        <div class="container">
+            <h2 class="section-title">✨ Возможности</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <i class="fa-solid fa-photo-film"></i>
+                    <h3>Универсальность форматов</h3>
+                    <p>Скачивание видео (MKV, MP4) и аудио (OPUS, M4A, MP3). Поддержка YouTube, Instagram, TikTok и сотен других сайтов.</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fa-solid fa-sliders"></i>
+                    <h3>Гибкие настройки</h3>
+                    <p>Динамический выбор разрешения, FPS и кодеков (AV1, VP9, H.264). Умный подбор лучшей альтернативы.</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fa-solid fa-scissors"></i>
+                    <h3>Обрезка на лету</h3>
+                    <p>Обрезка видео по точным таймкодам прямо во время скачивания. Не нужно скачивать файл целиком!</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fa-solid fa-clock"></i>
+                    <h3>Планировщик</h3>
+                    <p>Запланируйте скачивание на конкретную дату и время. Работает в фоне даже при закрытом окне интерфейса.</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <h3>Прокси и Авторизация</h3>
+                    <p>Поддержка HTTP/SOCKS прокси с авторизацией и обход возрастных ограничений через локальный браузер.</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fa-solid fa-rotate"></i>
+                    <h3>Автообновление</h3>
+                    <p>Автоматическая проверка и обновление самой программы, yt-dlp и ffmpeg при запуске приложения.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Installation Section -->
+    <section id="installation">
+        <div class="container">
+            <h2 class="section-title">⚙️ Установка</h2>
+            
+            <div class="install-box">
+                <h3>Вариант 1 — Готовый установщик (Рекомендуется)</h3>
+                <p>1. Скачайте последний релиз из раздела <a href="https://github.com/frostbittenbull/RedStream/releases" target="_blank">Releases</a>.<br>
+                   2. Запустите <code>RedStream_Setup_x64.exe</code> и следуйте инструкциям на экране.</p>
+            </div>
+
+            <div class="install-box">
+                <h3>Вариант 2 — Из исходников</h3>
+                <p>Выполните следующие команды в терминале:</p>
+<pre>git clone https://github.com/frostbittenbull/RedStream.git
+cd RedStream
+curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe -o yt-dlp.exe
+curl -L https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-essentials.7z -o ffmpeg.7z
+# Распаковать ffmpeg.7z и положить ffmpeg.exe рядом с redstream.py
+pip install -r requirements.txt
+python redstream.py</pre>
+                <ul class="dependencies">
+                    <li><strong>Зависимости:</strong> customtkinter, Pillow, winotify, pystray</li>
+                    <li><strong>Требуется:</strong> yt-dlp.exe и ffmpeg.exe в папке с приложением (или в PATH)</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Screenshot Section -->
+    <section id="screenshot" style="background-color: var(--surface-color);">
+        <div class="container text-center">
+            <h2 class="section-title">🖼️ Интерфейс</h2>
+            <!-- Второй скриншот -->
+            <img src="Screenshot.png" alt="RedStream Screenshot" class="hero-image" style="margin-top: 0;" onerror="this.src='https://via.placeholder.com/1000x600/0f0f11/ffffff?text=Screenshot.png'">
+        </div>
+    </section>
+
+    <!-- Guides Section -->
+    <section id="guides">
+        <div class="container">
+            <h2 class="section-title">📖 Как пользоваться</h2>
+            
+            <div class="info-grid">
+                <div class="info-block">
+                    <h3><i class="fa-solid fa-folder-open"></i> Куда сохраняются файлы</h3>
+                    <p>Все загруженные файлы сохраняются в папку <code>RedStream Downloader</code> внутри вашей стандартной папки «Загрузки». Вы можете легко изменить этот путь прямо в интерфейсе программы.</p>
+                </div>
+
+                <div class="info-block">
+                    <h3><i class="fa-solid fa-scissors"></i> Обрезка видео</h3>
+                    <p>Нажмите кнопку ⚙ рядом с полем ввода ссылки. В открывшемся окне укажите таймкоды «Начало» и «Конец» в формате <code>ЧЧ:ММ:СС</code>. Если поля оставить пустыми — видео скачается целиком.</p>
+                </div>
+
+                <div class="info-block">
+                    <h3><i class="fa-regular fa-calendar-check"></i> Планировщик загрузок</h3>
+                    <p>Нажмите <strong>Дополнительно → Планировщик</strong>:</p>
+                    <ol>
+                        <li>Укажите дату и время запуска.</li>
+                        <li>Добавьте ссылку, выберите формат и качество.</li>
+                        <li>Нажмите <strong>ЗАПЛАНИРОВАТЬ</strong>.</li>
+                    </ol>
+                    <p><small><em>* Таймер работает в фоне, окно можно закрыть.</em></small></p>
+                </div>
+
+                <div class="info-block">
+                    <h3><i class="fa-solid fa-user-lock"></i> Авторизация через браузер</h3>
+                    <p>Для видео с возрастными ограничениями (18+) выберите ваш браузер в выпадающем списке. Программа использует ваши куки для доступа.</p>
+                    <p style="color: #ffaa00;">⚠️ <strong>Перед скачиванием браузер должен быть закрыт.</strong></p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tech Stack Section -->
+    <section id="tech-stack">
+        <div class="container">
+            <h2 class="section-title">🛠️ Стек технологий</h2>
+            <div class="tech-stack">
+                <a href="https://www.python.org/" target="_blank" class="tech-tag">Python 3.x</a>
+                <a href="https://github.com/yt-dlp/yt-dlp" target="_blank" class="tech-tag">yt-dlp</a>
+                <a href="https://github.com/ffmpeg/ffmpeg" target="_blank" class="tech-tag">ffmpeg</a>
+                <a href="https://github.com/TomSchimansky/CustomTkinter" target="_blank" class="tech-tag">CustomTkinter</a>
+                <a href="https://github.com/ip7z/7zip" target="_blank" class="tech-tag">7zipExtra</a>
+                <a href="https://github.com/upx/upx" target="_blank" class="tech-tag">upx</a>
+                <a href="https://github.com/python-pillow/Pillow" target="_blank" class="tech-tag">Pillow</a>
+                <a href="https://github.com/versa-syahptr/winotify" target="_blank" class="tech-tag">winotify</a>
+                <a href="https://github.com/moses-palmer/pystray" target="_blank" class="tech-tag">pystray</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <p>Создано с ❤️ на Python. Проект с открытым исходным кодом.</p>
+            <p style="margin-top: 10px;">
+                <a href="https://github.com/frostbittenbull/RedStream" target="_blank" style="color: var(--text-main); font-size: 1.5rem;">
+                    <i class="fa-brands fa-github"></i>
+                </a>
+            </p>
+        </div>
+    </footer>
+
+</body>
+</html>
