@@ -6,9 +6,8 @@
 **RedStream** — десктопное приложение для Windows с минималистичным интерфейсом, позволяющее скачивать видео и аудио с YouTube, Instagram, TikTok и сотен других платформ. Построено на базе [yt-dlp](https://github.com/yt-dlp/yt-dlp), [ffmpeg](https://github.com/ffmpeg/ffmpeg) и [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter).
 
 ---
-<div align="center">
-  <a href="https://github.com/frostbittenbull/RedStream/releases/download/2.2/RedStream_2.2_Setup_x64.exe" class="btn">Скачать .exe</a>
-</div>
+
+[!(https://github.com/user-attachments/assets/d5f0bbcf-3a24-41b9-ac8c-4fc2d0b697e9)](https://github.com/frostbittenbull/RedStream/releases/download/2.2/RedStream_2.2_Setup_x64.exe)
 
 ---
 
