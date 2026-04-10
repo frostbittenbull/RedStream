@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RedStream — Video Downloader</title>
+    <link rel="icon" type="image/png" href="Logotype.png">
     <meta name="description" content="Простой и удобный загрузчик видео с популярных сайтов: YouTube, Instagram, TikTok.">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -24,7 +25,6 @@
             --border-color: #2d2d30;
         }
 
-        /* Плавный скролл всей страницы */
         html {
             scroll-behavior: smooth;
         }
@@ -63,16 +63,15 @@
             padding: 0 20px;
         }
 
-        /* --- ОБНОВЛЕННЫЙ БЛОК HERO (Титульная страница) --- */
         .hero {
-            min-height: 100vh; /* Занимает 100% высоты экрана */
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             text-align: center;
-            background: radial-gradient(circle at 50% 50%, rgba(229, 9, 20, 0.15), transparent 70%);
-            position: relative; /* Для позиционирования стрелочки */
+            background: radial-gradient(circle at 50% -20%, rgba(229, 9, 20, 0.15), transparent 60%);
+            position: relative;
             padding: 20px;
         }
 
@@ -123,9 +122,9 @@
         .hero-image {
             margin-bottom: 40px;
             max-width: 100%;
-            max-height: 50vh; /* Ограничиваем высоту, чтобы влезало на экраны ноутов */
+            max-height: 50vh;
             object-fit: contain;
-            border-radius: 75px; /* Немного уменьшил радиус для гармонии с экраном */
+            border-radius: 75px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.5);
             transition: transform 0.3s ease;
         }
@@ -134,7 +133,6 @@
             transform: scale(1.02);
         }
 
-        /* Анимация прыгающей стрелочки */
         .scroll-indicator {
             position: absolute;
             bottom: 40px;
@@ -156,7 +154,6 @@
             40% { transform: translateY(-15px) translateX(-50%); }
             60% { transform: translateY(-7px) translateX(-50%); }
         }
-        /* -------------------------------------------------- */
 
         .screen-image {
             margin-top: 60px;
@@ -318,7 +315,6 @@
             .info-grid { grid-template-columns: 1fr; }
         }
 
-        /* Классы для анимации появления при скролле */
         .reveal {
             opacity: 0;
             transform: translateY(50px);
@@ -333,7 +329,6 @@
 </head>
 <body>
 
-    <!-- Титульная страница (Занимает весь экран) -->
     <div class="hero">
         <div class="container">
             <img src="Logotype.png" alt="RedStream Preview" class="hero-image" onerror="this.src='https://via.placeholder.com/1000x560/1a1a1d/ffffff?text=Logotype.png'">
@@ -343,14 +338,12 @@
                 <i class="fa-brands fa-windows"></i> Скачать для Windows (x64)
             </a>
         </div>
-        
-        <!-- Прыгающая стрелочка вниз -->
+
         <a href="#features" class="scroll-indicator">
             <i class="fa-solid fa-chevron-down"></i>
         </a>
     </div>
 
-    <!-- Контент ниже будет плавно появляться при скролле (класс reveal) -->
     <section id="features" class="reveal">
         <div class="container">
             <h2 class="section-title">✨ Возможности</h2>
@@ -403,12 +396,12 @@
                 <h3>Вариант 2 — Из исходников</h3>
                 <p>Выполните следующие команды в терминале:</p>
                 <pre>git clone https://github.com/frostbittenbull/RedStream.git
-cd RedStream
-curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe -o yt-dlp.exe
-curl -L https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-essentials.7z -o ffmpeg.7z
-# Распаковать ffmpeg.7z и положить ffmpeg.exe рядом с redstream.py
-pip install -r requirements.txt
-python redstream.py</pre>
+                cd RedStream
+                curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe -o yt-dlp.exe
+                curl -L https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-essentials.7z -o ffmpeg.7z
+                # Распаковать ffmpeg.7z и положить ffmpeg.exe рядом с redstream.py
+                pip install -r requirements.txt
+                python redstream.py</pre>
                 <ul class="dependencies">
                     <li><strong>Зависимости:</strong> customtkinter, Pillow, winotify, pystray</li>
                     <li><strong>Требуется:</strong> yt-dlp.exe и ffmpeg.exe в папке с приложением (или в PATH)</li>
@@ -487,23 +480,20 @@ python redstream.py</pre>
         </div>
     </footer>
 
-    <!-- Скрипт для плавного появления блоков при скролле -->
     <script>
         function reveal() {
             var reveals = document.querySelectorAll(".reveal");
             for (var i = 0; i < reveals.length; i++) {
                 var windowHeight = window.innerHeight;
                 var elementTop = reveals[i].getBoundingClientRect().top;
-                var elementVisible = 100; // Насколько пикселей блок должен показаться, чтобы началась анимация
+                var elementVisible = 100;
 
                 if (elementTop < windowHeight - elementVisible) {
                     reveals[i].classList.add("active");
                 }
             }
         }
-        // Проверяем при скролле
         window.addEventListener("scroll", reveal);
-        // Проверяем сразу при загрузке (если пользователь обновил страницу на середине)
         reveal();
     </script>
 
