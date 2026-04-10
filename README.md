@@ -7,8 +7,12 @@
 
 ---
 
-[![Скачать](https://github.com/user-attachments/assets/31ea9ce3-b604-4548-91cf-1bf98d2bdd93)](https://github.com/frostbittenbull/RedStream/releases/download/2.2/RedStream_2.2_Setup_x64.exe)
-
+[![Скачать](https://github.com/user-attachments/assets/01c35b38-875d-47ca-b6bf-4c0bb64f9d6f)](https://github.com/frostbittenbull/RedStream/releases/download/2.2/RedStream_2.2_Setup_x64.exe)
+<p align="center">
+  <a href="https://github.com/frostbittenbull/RedStream/releases/download/2.2/RedStream_2.2_Setup_x64.exe">
+    <img src="[https://github.com/user-attachments/assets/31ea9ce3-b604-4548-91cf-1bf98d2bdd93](https://github.com/user-attachments/assets/01c35b38-875d-47ca-b6bf-4c0bb64f9d6f)" alt="Download RedStream">
+  </a>
+</p>
 ---
 
 ## ✨ Возможности
