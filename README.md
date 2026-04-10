@@ -7,6 +7,10 @@
 
 ---
 
+# [Скачать последнюю версию (.exe)](https://github.com/frostbittenbull/RedStream/releases/download/2.2/RedStream_2.2_Setup_x64.exe)
+
+---
+
 ## ✨ Возможности
 
 - Поддержка YouTube, Instagram, TikTok и [многих других сайтов](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md)
