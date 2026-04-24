@@ -7,14 +7,6 @@
 
 ---
 
-<p align="center">
-  <a href="https://github.com/frostbittenbull/RedStream/releases/latest/download/RedStream_Setup_x64.exe">
-    <img src="https://github.com/user-attachments/assets/d42d0193-b6af-4059-aca3-d95fe53c4385" alt="Download RedStream">
-  </a>
-</p>
-
----
-
 ## ✨ Возможности
 
 - Поддержка YouTube, Instagram, TikTok и [многих других сайтов](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md)
