@@ -21,6 +21,8 @@ struct Banner {
     int kind;                     // 0 = app, 1 = yt-dlp, 2 = ffmpeg
     std::wstring pre, link, post;
     Ctl* linkCtl = nullptr;
+    Ctl *bgCtl = nullptr, *blockCtl = nullptr, *closeCtl = nullptr;
+    bool dismissed = false;
 };
 
 struct App {

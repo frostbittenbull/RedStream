@@ -52,10 +52,11 @@ using json = nlohmann::json;
 namespace fs = std::filesystem;
 
 // ── Версия ───────────────────────────────────────────────────────────────────
-#define APP_VERSION      L"3.1"
-#define APP_BUILD        L"14.10.2026"
+#define APP_VERSION      L"3.2"
+#define APP_BUILD        L"16.10.2026"
 #define APP_SITE_URL     L"https://red-stream.ru"
 #define APP_SITE_TEXT    L"red-stream.ru"
+#define APP_UPDATE_URL  L"https://github.com/frostbittenbull/RedStream/releases/latest/download/RedStream.exe"
 #define GITHUB_RELEASES  L"https://github.com/frostbittenbull/RedStream/releases/latest"
 #define GITHUB_API_URL   L"https://api.github.com/repos/frostbittenbull/RedStream/releases/latest"
 #define GITHUB_REPO_URL  L"https://github.com/frostbittenbull/RedStream"

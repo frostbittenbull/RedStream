@@ -4,7 +4,7 @@
 
 App A;
 
-enum { T_URL = 1, T_SPIN, T_SCHED, T_TOAST, T_PULSE, T_UPD };
+enum { T_URL = 1, T_SPIN, T_SCHED, T_TOAST, T_PULSE, T_UPD, T_BANNER = 100 };
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Маппинги (из main.py)
@@ -580,8 +580,31 @@ static std::wstring GroupNum(double v, int dec) {
 struct DlLineState {
     int  lastKind = 0;        // 1 = прогресс, 2 = финальная обработка, 3 = ошибка
     bool videoStream = true;
+    int  destCount = 0;       // сколько файлов уже начато для текущего ролика (видео, затем звук)
+    std::map<std::string, bool> fmtHasVideo;   // format_id -> есть видеодорожка
     std::string title;
 };
+
+static bool g_selfUpdating = false;           // идёт самообновление программы
+
+// «ETA 08:03» / «ETA 1:02:03» -> «8 мин 3 сек» / «1 ч 2 мин»
+static std::wstring FmtEta(const std::string& s) {
+    std::vector<long> parts;
+    std::string cur;
+    for (char c : s + ":") {
+        if (c == ':') { if (!cur.empty()) parts.push_back(std::atol(cur.c_str())); cur.clear(); }
+        else if (isdigit((unsigned char)c)) cur += c;
+    }
+    if (parts.empty() || parts.size() > 3) return L"";
+    long sec = 0;
+    for (long p : parts) sec = sec * 60 + p;
+    long h = sec / 3600, m = (sec % 3600) / 60, r = sec % 60;
+    wchar_t b[64];
+    if (h > 0)      swprintf(b, 64, L"%ld ч %ld мин", h, m);
+    else if (m > 0) swprintf(b, 64, L"%ld мин %ld сек", m, r);
+    else            swprintf(b, 64, L"%ld сек", r);
+    return b;
+}
 
 static void HandleDlLine(const std::string& line, const std::wstring& ext, bool audioFmt, int gen,
                          DlLineState& st) {
@@ -594,14 +617,32 @@ static void HandleDlLine(const std::string& line, const std::wstring& ext, bool 
         });
         return;
     }
+    if (line.find("Downloading item") != std::string::npos) st.destCount = 0;    // следующий ролик плейлиста
     if (line.find("[download] Destination:") != std::string::npos) {
         std::string lower = LowerA(line);
         size_t p;
         while ((p = lower.find(".part")) != std::string::npos) lower.erase(p, 5);
         auto ends = [&](const char* e) { return lower.size() >= strlen(e) && lower.compare(lower.size() - strlen(e), strlen(e), e) == 0; };
         if (!audioFmt) {
-            for (const char* e : {".mp4", ".mkv", ".webm", ".m4v", ".avi", ".mov", ".ts"}) if (ends(e)) { st.videoStream = true; break; }
-            for (const char* e : {".opus", ".m4a", ".mp3", ".aac", ".ogg", ".wav"}) if (ends(e)) { st.videoStream = false; break; }
+            st.destCount++;
+            bool resolved = false;
+            // 1) по идентификатору формата в имени временного файла: «Название.f251.webm»
+            std::string clean = line;
+            while (!clean.empty() && (clean.back() == '\r' || clean.back() == ' ')) clean.pop_back();
+            {
+                std::smatch fm;
+                static const std::regex rf("\\.f([A-Za-z0-9_-]+)\\.[A-Za-z0-9]+(?:\\.part)?$");
+                if (std::regex_search(clean, fm, rf)) {
+                    auto it = st.fmtHasVideo.find(fm[1].str());
+                    if (it != st.fmtHasVideo.end()) { st.videoStream = it->second; resolved = true; }
+                }
+            }
+            // 2) по расширению: m4a/opus/... — точно звук; для webm/mp4 второй файл при слиянии — звук
+            if (!resolved) {
+                bool audioExt = false;
+                for (const char* e : {".opus", ".m4a", ".mp3", ".aac", ".ogg", ".wav"}) if (ends(e)) { audioExt = true; break; }
+                st.videoStream = !audioExt && st.destCount < 2;
+            }
         }
         std::smatch m;
         std::string l2 = line;
@@ -633,6 +674,12 @@ static void HandleDlLine(const std::string& line, const std::wstring& ext, bool 
                                                                    {"KB/S", 1.0 / 1000}, {"MB/S", 1}, {"GB/S", 1000}};
                 auto cit = conv.find(su);
                 speed = GroupNum(sv * (cit == conv.end() ? 1 : cit->second), 1) + L" МБ/с";
+            }
+            static const std::regex reEta("ETA\\s+([0-9:]+)");
+            std::smatch em;
+            if (std::regex_search(line, em, reEta)) {
+                std::wstring eta = FmtEta(em[1].str());
+                if (!eta.empty()) speed += (speed.empty() ? L"" : L" · ") + eta;
             }
             std::wstring label = audioFmt ? L"Загрузка" : (st.videoStream ? L"Загрузка видеопотока" : L"Загрузка аудиопотока");
             std::wstring left = label + L": " + W(m[1].str()) + L"% " + size;
@@ -744,6 +791,7 @@ static std::vector<std::wstring> BuildDownloadArgs() {
 static void RunDownload() {
     std::wstring url = Trim(A.main->GetText(A.urlEdit));
     if (url.empty()) { ReportError(L"Вставьте ссылку на видео или плейлист!"); return; }
+    if (g_selfUpdating) { ReportError(L"Идёт обновление программы. Подождите."); return; }
 
     SHCreateDirectoryExW(nullptr, A.destFolder.c_str(), nullptr);
     std::vector<std::wstring> cmd = BuildDownloadArgs();
@@ -761,8 +809,13 @@ static void RunDownload() {
     auto proc = std::make_shared<Proc>();
     A.dlProc = proc;
     std::wstring dlUrl = url;
+    std::map<std::string, bool> fmtMap;
+    for (auto& f : A.rawFormats) {
+        std::string vc = js(f, "vcodec", "none");
+        fmtMap[js(f, "format_id")] = !vc.empty() && vc != "none";
+    }
 
-    std::thread([proc, cmd, gen, ext, audioFmt, dlUrl]() {
+    std::thread([proc, cmd, gen, ext, audioFmt, dlUrl, fmtMap]() {
         time_t t = time(nullptr);
         tm lt;
         localtime_s(&lt, &t);
@@ -781,6 +834,7 @@ static void RunDownload() {
             return;
         }
         DlLineState st;
+        st.fmtHasVideo = fmtMap;
         std::string buf;
         char chunk[8192];
         DWORD n;
@@ -962,6 +1016,50 @@ static void TrayMenu() {
 // ═════════════════════════════════════════════════════════════════════════════
 //  Баннеры обновлений
 // ═════════════════════════════════════════════════════════════════════════════
+static Ctl* g_appBannerBg = nullptr;                          // баннер «новая версия программы»
+static std::shared_ptr<std::wstring> g_appBannerOvr;          // не пусто — вместо текста баннера показывается статус
+static void StartSelfUpdate();
+
+static int g_bannerActive = -1;                // индекс показываемого баннера (-1 — нет)
+
+// Баннеры занимают место панели меню (поверх «Настройки / Дополнительно / Помощь»), размер окна не меняется.
+// Показывается один баннер за раз; если их несколько — они сменяют друг друга.
+static void ApplyBannerVis() {
+    for (int i = 0; i < (int)A.banners.size(); i++) {
+        Banner& b = A.banners[i];
+        bool act = (i == g_bannerActive) && !b.dismissed;
+        bool busy = (b.kind == 0 && g_appBannerOvr && !g_appBannerOvr->empty());
+        b.bgCtl->vis = act;
+        b.blockCtl->vis = act;
+        b.linkCtl->vis = act && !busy;
+        b.closeCtl->vis = act && !busy;
+    }
+    A.main->InvalAll();
+}
+
+static void RotateBanner() {
+    int n = (int)A.banners.size();
+    if (n < 2 || g_selfUpdating) return;
+    for (int k = 1; k <= n; k++) {
+        int i = (g_bannerActive + k + n) % n;
+        if (!A.banners[i].dismissed) { g_bannerActive = i; break; }
+    }
+    ApplyBannerVis();
+}
+
+static void DismissBanner(int i) {
+    int n = (int)A.banners.size();
+    if (i < 0 || i >= n) return;
+    if (A.banners[i].kind == 0 && g_selfUpdating) return;
+    A.banners[i].dismissed = true;
+    g_bannerActive = -1;
+    for (int k = 1; k <= n; k++) {
+        int j = (i + k) % n;
+        if (!A.banners[j].dismissed) { g_bannerActive = j; break; }
+    }
+    ApplyBannerVis();
+}
+
 static void ShowBanner(int kind, const std::wstring& pre, const std::wstring& link, const std::wstring& post) {
     uint32_t bg, fg, lk, lkH;
     if (kind == 0)      { bg = 0xffaa00; fg = 0x1e1e1e; lk = 0xff0000; lkH = 0xcc0000; }
@@ -969,8 +1067,11 @@ static void ShowBanner(int kind, const std::wstring& pre, const std::wstring& li
     else                { bg = 0x1a5a8a; fg = 0xffffff; lk = 0x88ddff; lkH = 0xc0eeff; }
 
     int idx = (int)A.banners.size();
-    float y = UF(lay::TitleH + lay::ToolbarH) + idx * UF(lay::BannerH);
+    float sep = std::max(1.f, UF(1));
+    float y = UF(lay::TitleH) + sep;                    // ровно поверх панели меню
+    float H = UF(lay::ToolbarH) - sep;
     float W = UF(lay::W);
+    float textW = W - H;                                // справа — кнопка закрытия
 
     HDC dc = GetDC(A.hwnd);
     G::Graphics g(dc);
@@ -978,32 +1079,122 @@ static void ShowBanner(int kind, const std::wstring& pre, const std::wstring& li
     G::Font* fb = gfx::GetFont(UF(10), true, false, true);
     float w1 = gfx::TextWidth(g, pre, f), w2 = gfx::TextWidth(g, link, fb), w3 = gfx::TextWidth(g, post, f);
     ReleaseDC(A.hwnd, dc);
-    float total = w1 + w2 + w3, x0 = (W - total) / 2;
+    float total = w1 + w2 + w3, x0 = std::max(UF(6), (textW - total) / 2);
 
-    Ctl* bgc = A.main->Add(K::Custom, G::RectF(0, y, W, UF(lay::BannerH)));
+    Ctl* bgc = A.main->Add(K::Custom, G::RectF(0, y, W, H));
     bgc->body = false;
+    auto ovr = std::make_shared<std::wstring>();
+    if (kind == 0) { g_appBannerOvr = ovr; g_appBannerBg = bgc; }
     bgc->draw = [=](G::Graphics& gg, Ctl& c) {
         G::SolidBrush b(C(bg));
         gg.FillRectangle(&b, c.r);
+        if (!ovr->empty()) {
+            gfx::Text(gg, *ovr, c.r, gfx::GetFont(UF(10)), C(fg), gfx::CENTER, false);
+            return;
+        }
         gfx::Text(gg, pre, G::RectF(x0, c.r.Y, w1 + 2, c.r.Height), gfx::GetFont(UF(10)), C(fg), gfx::LEFT, false);
         gfx::Text(gg, post, G::RectF(x0 + w1 + w2, c.r.Y, w3 + 2, c.r.Height), gfx::GetFont(UF(10)), C(fg), gfx::LEFT, false);
     };
-    Ctl* lc = A.main->AddButton(G::RectF(x0 + w1 - UF(4), y, w2 + UF(8), UF(lay::BannerH)), link, nullptr);
+
+    // невидимая кнопка на всю ширину — чтобы клики не проваливались в кнопки панели меню под баннером
+    Ctl* blk = A.main->AddButton(G::RectF(0, y, W, H), L"", []() {});
+    blk->body = false; blk->hand = false;
+
+    Ctl* lc = A.main->AddButton(G::RectF(x0 + w1 - UF(4), y, w2 + UF(8), H), link, nullptr);
     lc->body = false;
     lc->px = UF(10); lc->bold = true; lc->ul = true; lc->fg = lk; lc->fgH = lkH;
     lc->ha = gfx::CENTER;
-    int bi = idx;
-    lc->onClick = [kind, bi]() {
-        if (kind == 0) { ShellOpen(GITHUB_RELEASES); return; }
+    lc->onClick = [kind]() {
+        if (kind == 0) { StartSelfUpdate(); return; }
         ShowUpdater();
     };
-    A.banners.push_back({kind, pre, link, post, lc});
 
-    A.main->ShiftBody((int)UF(lay::BannerH));
-    RECT wr;
-    GetWindowRect(A.hwnd, &wr);
-    SetWindowPos(A.hwnd, nullptr, 0, 0, wr.right - wr.left, wr.bottom - wr.top + (int)UF(lay::BannerH),
-                 SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+    Ctl* cl = A.main->AddButton(G::RectF(W - H - sep, y, H, H), L"", [idx]() { DismissBanner(idx); });
+    cl->body = false; cl->px = UF(10); cl->icon = gfx::I_CLOSE; cl->iconPx = UF(8);
+    cl->fg = fg; cl->fgH = lkH; cl->rad = 0;
+
+    A.banners.push_back({kind, pre, link, post, lc});
+    Banner& nb = A.banners.back();
+    nb.bgCtl = bgc; nb.blockCtl = blk; nb.closeCtl = cl;
+    if (g_bannerActive < 0) g_bannerActive = idx;
+    ApplyBannerVis();
+    if (A.banners.size() > 1) SetTimer(A.hwnd, T_BANNER, 6000, nullptr);
+}
+
+// Текст поверх баннера обновления программы (пустая строка — вернуть обычный вид)
+static void SetAppBanner(const std::wstring& text) {
+    if (!g_appBannerOvr || !g_appBannerBg) return;
+    *g_appBannerOvr = text;
+    if (!text.empty()) {                                 // на время обновления баннер программы всегда на виду
+        for (int i = 0; i < (int)A.banners.size(); i++)
+            if (A.banners[i].kind == 0) { A.banners[i].dismissed = false; g_bannerActive = i; }
+    }
+    ApplyBannerVis();
+}
+
+// Скачивает свежий RedStream.exe с GitHub и подменяет им текущий файл:
+// работающий exe переименовывается в .old (Windows это позволяет), новый встаёт на его место, затем перезапуск.
+static void StartSelfUpdate() {
+    if (g_selfUpdating) return;
+    if (A.dlProc) { ReportError(L"Дождитесь окончания загрузки и повторите."); return; }
+    if (UpdaterBusy()) { ReportError(L"Дождитесь окончания обновления компонентов."); return; }
+    g_selfUpdating = true;
+    SetAppBanner(L"Подключение…");
+
+    std::thread([]() {
+        std::wstring exe = ExePath(), tmp = exe + L".new", old = exe + L".old";
+        DeleteFileW(tmp.c_str());
+
+        int lastPct = -1;
+        bool ok = HttpDownload(APP_UPDATE_URL, tmp, [&lastPct](uint64_t done, uint64_t total) {
+            int pct = total ? (int)(done * 100 / total) : (int)(done / 1048576);
+            if (pct == lastPct) return true;
+            lastPct = pct;
+            wchar_t b[160];
+            if (total) swprintf(b, 160, L"Скачивание обновления… %d%%  (%.1f МБ из %.1f МБ)", pct, done / 1048576.0, total / 1048576.0);
+            else       swprintf(b, 160, L"Скачивание обновления… %.1f МБ", done / 1048576.0);
+            std::wstring t = b;
+            std::replace(t.begin(), t.end(), L'.', L',');
+            PostUI([t]() { SetAppBanner(t); });
+            return true;
+        }, 60000);
+
+        // проверка: файл разумного размера и начинается с «MZ»
+        if (ok) {
+            WIN32_FILE_ATTRIBUTE_DATA fa{};
+            ok = GetFileAttributesExW(tmp.c_str(), GetFileExInfoStandard, &fa) && fa.nFileSizeHigh == 0 && fa.nFileSizeLow > 256 * 1024;
+            if (ok) {
+                char mz[2] = {0, 0};
+                if (FILE* f = _wfopen(tmp.c_str(), L"rb")) { fread(mz, 1, 2, f); fclose(f); }
+                ok = mz[0] == 'M' && mz[1] == 'Z';
+            }
+        }
+
+        bool installed = false;
+        if (ok) {
+            PostUI([]() { SetAppBanner(L"Установка обновления…"); });
+            DeleteFileW(old.c_str());
+            if (MoveFileExW(exe.c_str(), old.c_str(), MOVEFILE_REPLACE_EXISTING)) {
+                if (MoveFileExW(tmp.c_str(), exe.c_str(), MOVEFILE_REPLACE_EXISTING)) installed = true;
+                else MoveFileExW(old.c_str(), exe.c_str(), MOVEFILE_REPLACE_EXISTING);     // откат
+            }
+        }
+        if (!installed) DeleteFileW(tmp.c_str());
+
+        PostUI([installed, exe]() {
+            if (!installed) {
+                g_selfUpdating = false;
+                SetAppBanner(L"");
+                ReportError(L"Не удалось обновиться автоматически. Открываю страницу загрузки.");
+                ShellOpen(GITHUB_RELEASES);
+                return;
+            }
+            SetAppBanner(L"Обновление установлено. Перезапуск…");
+            PlayKindSound("success");
+            ShellExecuteW(nullptr, L"open", exe.c_str(), nullptr, ExeDir().c_str(), SW_SHOWNORMAL);
+            DestroyWindow(A.hwnd);
+        });
+    }).detach();
 }
 
 static void CheckFfmpegUpdate() {
@@ -1065,6 +1256,8 @@ static bool VersionNewer(const std::string& a, const std::string& b) {
 
 static void CheckAppUpdate() {
     std::thread([]() {
+        DeleteFileW((ExePath() + L".old").c_str());     // остатки предыдущего самообновления
+        DeleteFileW((ExePath() + L".new").c_str());
         std::string body;
         if (HttpGet(GITHUB_API_URL, body, 5000)) {
             try {
@@ -1373,9 +1566,9 @@ static void BuildMain() {
     A.bar->barA = col::Dim; A.bar->barB = col::Dim;
     by += UF(9) + UF(4);
     float hlab = UF(13);
-    A.lblLeft = p->AddLabel(G::RectF(pad, by, cw - UF(100), hlab),
+    A.lblLeft = p->AddLabel(G::RectF(pad, by, cw - UF(150), hlab),
                             L"Вставьте ссылку на видео или плейлист, и нажмите «СКАЧАТЬ».", UF(9), 0x777777, gfx::LEFT);
-    A.lblRight = p->AddLabel(G::RectF(pad + cw - UF(100), by, UF(100), hlab), L"", UF(9), 0x777777, gfx::RIGHT);
+    A.lblRight = p->AddLabel(G::RectF(pad + cw - UF(150), by, UF(150), hlab), L"", UF(9), 0x777777, gfx::RIGHT);
     by += hlab + UF(8);
 
     // подвал: СТОП/СКАЧАТЬ + Открыть папку
@@ -1442,6 +1635,7 @@ static bool MainPre(UINT m, WPARAM w, LPARAM l, LRESULT& out) {
         case T_TOAST: KillTimer(A.hwnd, T_TOAST); if (!A.inTray) TrayRemove(); out = 0; return true;
         case T_PULSE: UpdaterPulse(); out = 0; return true;
         case T_UPD: KillTimer(A.hwnd, T_UPD); CheckAppUpdate(); out = 0; return true;
+        case T_BANNER: RotateBanner(); out = 0; return true;
         }
         return false;
     case WM_TRAYICON:
